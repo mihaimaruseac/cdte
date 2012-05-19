@@ -1,21 +1,24 @@
 module MAS.AF where
 
-import Data.List (groupBy)
-
-import Debug.Trace
-
 {-
 Represents the AF agent. Since this is the only one who knows the entire
 configuration, this module is also responsible for getting the informations to
 be displayed to output.
 -}
 
+import Data.List (groupBy)
+
+import MAS.AP
+import MAS.GenericTypes
+
+import Debug.Trace
+
 -- The AF agent state.
 data AF = AF
   { numAgents :: Int
   , numSteps :: Int
   , leftOverPenalty :: Float
-  , agentList :: [String]
+  , agentList :: [AP]
   , taskList :: [String]
   } deriving (Show)
 
@@ -41,9 +44,31 @@ parseFirstGroup _ _ _ = error "Invalid system file (first line should be followe
 -- Parses the first line: number of agent, time steps and leftoverpenalty
 parseFirstLine :: String -> [String] -> [String] -> AF
 parseFirstLine s a ts
-  | length fl == 3 = AF n t lp a ts
+  | length fl == 3 = AF n t lp (parseAgents a n) ts
   | otherwise = error "Invalid format for first line"
   where
     fl = words s
     [n, t] = map read $ take 2 fl
     lp = read $ fl !! 2
+
+-- Parses the agent lists. (checks if the agent count is good).
+parseAgents :: [String] -> Int -> [AP]
+parseAgents l n
+  | length l == n = doParseAgents $ zip l [1..]
+  | otherwise = error "Invalid system file (declared agents and count of agents don't match)"
+
+-- Parses the agent list.
+doParseAgents :: [(String, ID)] -> [AP]
+doParseAgents = map parseAgent
+
+-- Parses a single agent.
+parseAgent :: (String, ID) -> AP
+parseAgent (s, i)
+  | even (length ws) = error "Invalid system file (wrong agent specification)"
+  | otherwise = AP i bdg caps
+  where
+    ws = words s
+    bdg = read $ head ws
+    caps = buildCapLists $ tail ws
+    buildCapLists [] = []
+    buildCapLists (cap:cost:ccs) = ((read cap), (read cost)) : buildCapLists ccs
