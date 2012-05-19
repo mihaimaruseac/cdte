@@ -6,7 +6,7 @@ SOURCES = $(shell find . -type f -name '*.hs')
 HIFILES = $(patsubst %.hs, %.hi, $(SOURCES))
 OFILES = $(patsubst %.hs, %.o, $(SOURCES))
 
-all: $(TARGET)
+all: $(TARGET) run
 
 $(TARGET): $(SOURCES)
 	@ghc --make Main.hs -o $(TARGET)
