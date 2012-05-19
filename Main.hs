@@ -1,4 +1,6 @@
 module Main where
 
-main = undefined
+import MAS
+
+main = mainMAS
 
