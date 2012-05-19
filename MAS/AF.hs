@@ -26,7 +26,15 @@ data AF = AF
 prepareAndLaunch :: String -> IO ()
 prepareAndLaunch fname = do
   s <- readFile fname
-  print $ parseFileContent s
+  let af = parseFileContent s
+  displayStartInfo af
+
+-- Prints the startup information
+displayStartInfo :: AF -> IO ()
+displayStartInfo af = do
+  putStrLn $ "System start: " ++ (show $ numAgents af) ++ " agents."
+  mapM putStrLn . map pprintAP . agentList $ af
+  putStrLn ""
 
 -- Parses system file content. Build the AF agent.
 parseFileContent :: String -> AF

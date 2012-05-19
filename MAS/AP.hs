@@ -9,8 +9,15 @@ import MAS.GenericTypes
 
 -- The AP agent state.
 data AP = AP
-  { id :: ID
+  { idAP :: ID
   , budget :: Cost
   , caps :: [Cap]
   } deriving (Show)
+
+pprintAP :: AP -> String
+pprintAP a = "AP" ++ id ++ ": budget: " ++ bdg ++ " caps: " ++ capss
+  where
+    id = show $ idAP a
+    bdg = show $ budget a
+    capss = pprintCaps $ caps a
 
