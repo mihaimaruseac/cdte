@@ -19,7 +19,7 @@ data AF = AF
   , numSteps :: Int
   , leftOverPenalty :: Float
   , agentList :: [AP]
-  , taskList :: [String]
+  , taskList :: [(Time, [Task])]
   } deriving (Show)
 
 -- Parses system file and construct the agents then start the environment.
@@ -44,7 +44,7 @@ parseFirstGroup _ _ _ = error "Invalid system file (first line should be followe
 -- Parses the first line: number of agent, time steps and leftoverpenalty
 parseFirstLine :: String -> [String] -> [String] -> AF
 parseFirstLine s a ts
-  | length fl == 3 = AF n t lp (parseAgents a n) ts
+  | length fl == 3 = AF n t lp (parseAgents a n) (parseTasks ts)
   | otherwise = error "Invalid format for first line"
   where
     fl = words s
@@ -72,3 +72,16 @@ parseAgent (s, i)
     caps = buildCapLists $ tail ws
     buildCapLists [] = []
     buildCapLists (cap:cost:ccs) = ((read cap), (read cost)) : buildCapLists ccs
+
+-- Checks the length of the task lists and start parsing it.
+parseTasks :: [String] -> [(Time, [Task])]
+parseTasks l = doParseTasks (map (map read) (map words l)) 1 1
+
+-- Parse tasks
+doParseTasks :: [[ID]] -> Time -> ID -> [(Time, [Task])]
+doParseTasks [] _ _ = []
+doParseTasks (tt:ts) t i = (t, tl) : doParseTasks ts (t + 1) i'
+  where
+    (i', tl) = doParseTaskTime tt i
+    doParseTaskTime [] i = (i, [])
+    doParseTaskTime (t:ts) i = let (i', t') = doParseTaskTime ts (i + 1) in (i', (i, t) : t')
