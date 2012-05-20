@@ -39,7 +39,6 @@ prepareAndLaunch fname = do
   displayStartInfo af
   launchSystem af
   agentLoopAF af 0
-  terminate af
 
 agentLoopAF :: AF -> Time -> IO ()
 agentLoopAF af t = do
@@ -92,16 +91,6 @@ distributeTasksToOneAgent (a@AP { idAP = aid, incomingAP = c }, t) = do
 
 launchSystem :: AF -> IO ()
 launchSystem af = mapM_ (forkIO . agentLoopAP) $ agentList af
-
--- wait for all termination messages
-terminate :: AF -> IO ()
-terminate af = doTerminate (numAgents af) (incoming af)
-  where
-    doTerminate 0 _ = return ()
-    doTerminate n inc = do
-      m <- readChan inc
-      print m
-      if isEnd m then doTerminate (n - 1) inc else doTerminate n inc
 
 -- Parse system file
 parseSystemFile :: String -> IO AF
