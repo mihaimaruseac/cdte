@@ -16,6 +16,7 @@ data Message
                             -- leftovers (AP->AF)
   | AskCap AP ID -- ask which other AP can do tasks requiring ID (AP->AF)
   | AnsCap ID [AP] -- reply to the above request (AF->AP)
+  | DoneAsking ID -- AP with ID has finished asking about caps
   | Cfp AP ID ID (Maybe Cost) -- cfp: me, task id, cap id, my cost (or Nothing) (AP->AP)
   | Deny AP ID Reason -- deny cfp: who denied, what task, what reason (AP->AP)
   | Accept AP ID Cost -- accept cfp: who accepts, what task, what cost (AP->AP)

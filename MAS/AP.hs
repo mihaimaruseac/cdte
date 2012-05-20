@@ -36,20 +36,30 @@ receiveTasks a@(AP { incomingAP=inc }) ms = do
 
 planifyTasks :: AP -> [Task] -> [Task] -> IO ([Task], [Task])
 planifyTasks a@(AP {budget=b, caps=c, leftOvers=lo, afap=afap,
-  incomingAP=inc}) t r = do
+  incomingAP=inc, idAP=aid}) t r = do
     let all_tasks = lo ++ t ++ r
     taskWhichICanGive <- askAboutOthers afap a all_tasks
+    writeChan afap $ DoneAsking aid
     -- TODO distribute tasks to other agents
     return ([], all_tasks)
 
-askAboutOthers :: Chan Message -> AP -> [Task] -> IO [(Task, Maybe AP)]
+askAboutOthers :: Chan Message -> AP -> [Task] -> IO [(Task, [AP])]
 askAboutOthers afap a = mapM (askOne afap a)
 
-askOne :: Chan Message -> AP -> Task -> IO (Task, Maybe AP)
+askOne :: Chan Message -> AP -> Task -> IO (Task, [AP])
 askOne afap a t@(tid, cid) = do
-  print $ show (a, "Asking about ", tid, cid)
+  putStrLn $ show a ++  " asking about " ++ show (tid, cid)
   writeChan afap $ AskCap a cid
-  return (t, Nothing) --TODO
+  waitForReply [] (incomingAP a)
+  where
+    waitForReply ms c = do
+      m <- readChan c
+      case m of
+        AnsCap cid' aps -> if cid' /= cid then waitForReply (m:ms) c else do
+          putBackAll ms c
+          putStrLn $ show a ++ " received " ++ show m
+          return (t, aps)
+        _ -> waitForReply (m:ms) c
 
 buildAP :: ID -> Cost -> [Cap] -> Chan Message -> Chan Message -> AP
 buildAP i bdg caps afap incoming = AP i bdg caps afap incoming []

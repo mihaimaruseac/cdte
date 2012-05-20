@@ -12,7 +12,7 @@ import Control.Concurrent
 import Control.Concurrent.Chan
 import Control.Concurrent.MVar
 import Control.Monad (when, replicateM, forM_, unless)
-import Data.List (groupBy, sortBy)
+import Data.List (groupBy, sortBy, (\\))
 
 import MAS.AP
 import MAS.GenericTypes
@@ -79,6 +79,7 @@ agentLoopSendingTasks af@(AF {agentList=ag, taskList=(t, _):_ }) t'
 
 agentLoopNoTasksToSend :: AF -> Time -> IO ()
 agentLoopNoTasksToSend af@(AF { agentList=ag }) t = do
+  receiveAllRequests af
   -- TODO: wait for negotiations
   agentLoopPhase2 af t
 
@@ -88,6 +89,20 @@ doSendTasks af@(AF { agentList=ag, taskList=(_, ts):tss }) t = do
   readyDistributeTasks otd ag
   let af' = af { taskList = tss }
   agentLoopNoTasksToSend af' t
+
+-- receive AskCap messages and send AnsCap back
+receiveAllRequests :: AF -> IO ()
+receiveAllRequests a@(AF {incoming=c, numAgents=n}) = doRAR c [1..n] []
+  where
+    doRAR c [] ms = putBackAll ms c
+    doRAR c l ms = do
+      m <- readChan c
+      case m of
+        AskCap ap id -> do
+          writeChan (incomingAP ap) $ AnsCap id $ findAllCapable a ap id
+          doRAR c l ms
+        DoneAsking id -> doRAR c (l \\ [id]) ms
+        _ -> doRAR c l (m:ms)
 
 receiveTasksDone :: AF -> IO [(AP, [Task], [Task])]
 receiveTasksDone a@(AF {numAgents=n, incoming=c}) = doRTD n c []
@@ -105,6 +120,11 @@ receiveTasksDone a@(AF {numAgents=n, incoming=c}) = doRTD n c []
 
 computeOptimumTaskDistribution :: AF -> [Task] -> [(AP, [Task])]
 computeOptimumTaskDistribution af t = [(head $ agentList af, t)] -- TODO
+
+findAllCapable :: AF -> AP -> ID -> [AP]
+findAllCapable a@(AF {agentList=ags}) ap id = filter hasCap ags \\ [ap]
+  where
+    hasCap (AP {caps=caps}) = id `elem` (map fst caps)
 
 readyDistributeTasks :: [(AP, [Task])] -> [AP] -> IO ()
 readyDistributeTasks otd ag = distributeTasks $ fillIn otd ag
