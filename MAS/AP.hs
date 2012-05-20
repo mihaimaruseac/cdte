@@ -10,7 +10,7 @@ constructed by giving the entire argument lists to the constructor.
 import Control.Concurrent.Chan
 import Control.Concurrent.MVar
 import Control.Monad (when, replicateM, forM_, unless)
-import Data.List (sortBy, (\\))
+import Data.List (sortBy, (\\), nub)
 
 import MAS.GenericTypes
 import MAS.Messages
@@ -71,8 +71,48 @@ planifyTasks a@(AP {budget=b, caps=c, leftOvers=lo, afap=afap,
     writeChan afap $ DoneReply aid
     -- wait for accept/deny and decide what to do
     (denied, accepted) <- waitForAllReplyDone a proposedTasksByMe
-    print ("MM-da", denied, accepted, aid)
-    return ([], all_tasks)
+    let denied' = removeAcceptedByThirdParty (nub denied) accepted
+    let (sendGo, sendNo) = decideOnAccepted accepted
+    doSendAnswers Go a afap sendGo
+    doSendAnswers No a afap sendNo
+    -- wait for answers from the other side
+    acceptedTasks <- receiveGos inc (length todoTasks' + length todoTasks'')
+    let gone = map (\(x,_,_) -> x) sendGo
+    -- announce what I'm doing after doing last resort plan
+    let denied'' = denied' ++ (toLeaveTasks \\ gone)
+    let (newBudget''', todoTasks''', toLeaveTasks''') = planMine denied'' newBudget'' c
+    return (todoTasks ++ acceptedTasks ++ todoTasks''', toLeaveTasks''')
+
+receiveGos :: Chan Message -> Int -> IO [Task]
+receiveGos c n = doRG c n [] []
+  where
+    doRG c 0 ms r = putBackAll ms c >> return r
+    doRG c n ms r = do
+      m <- readChan c
+      case m of
+        Go tid cid -> doRG c (n - 1) ms ((tid, cid) : r)
+        No tid cid -> doRG c (n - 1) ms r
+        _ -> doRG c n (m:ms) r
+
+decideOnAccepted :: [IncomingTask] -> ([IncomingTask],[IncomingTask])
+decideOnAccepted i = doDecide i [] []
+  where
+    doDecide [] g n = (g, n)
+    doDecide (t@(tid, _, _):ts) g n = doDecide (filter noft ts) (mint : g) (others ++ n)
+      where
+        ft (t1,_,_) = tid == t1
+        noft = not . ft
+        mint : others = sortBy tS $ t:filter ft ts
+        tS (_, Just c1, _) (_, Just c2, _) = c1 `compare` c2
+        tS _ _ = error "Are you alive?"
+
+removeAcceptedByThirdParty :: [Task] -> [IncomingTask] -> [Task]
+removeAcceptedByThirdParty ts its = filter (isNotAcceptedAtAll its) ts
+
+isNotAcceptedAtAll :: [IncomingTask] -> Task -> Bool
+isNotAcceptedAtAll ts t = not $ t `elem` map thr1 ts
+  where
+    thr1 (x,_,_) = x
 
 myCapacity :: [Cap] -> Task -> Task -> Ordering
 myCapacity cap (_, c1) (_, c2) =
@@ -101,9 +141,9 @@ planMine ts b c = doPlan ts b c [] []
   where
     doPlan [] b _ todo toleave = (b, todo, toleave)
     doPlan all@(t@(tid, cid):ts) b c todo toleave = case lookup cid c of
-      Nothing -> error "This should not have happened"
+      Nothing -> doPlan ts b c todo (t:toleave)
       Just cost -> if cost <= b then doPlan ts (b - cost) c (t:todo) toleave
-        else doPlan [] b c todo all
+        else doPlan [] b c todo (all ++ toleave)
 
 planHelping :: [IncomingTask] -> Cost -> [Cap] -> (Cost, [IncomingTask], [IncomingTask])
 planHelping ts b c = doPlan ts b c [] []
@@ -128,6 +168,15 @@ doSendDenyNonProfitable a afap = mapM_ (sendDeny NoProfit a afap)
 
 doAccept :: AP -> Chan Message -> [IncomingTask] -> IO ()
 doAccept a afap = mapM_ (sendAccept a afap)
+
+doSendAnswers :: (ID -> ID -> Message) -> AP -> Chan Message -> [IncomingTask] -> IO ()
+doSendAnswers t a afap = mapM_ (sendAnswer t a afap)
+
+sendAnswer :: (ID -> ID -> Message) -> AP -> Chan Message -> IncomingTask -> IO ()
+sendAnswer t a@(AP {idAP=sid}) afap ((tid, cid), _, AP {idAP=rid, incomingAP=apap}) = do
+  let m = t tid cid
+  writeChan apap m
+  writeChan afap $ Notify sid rid m
 
 sendAccept :: AP -> Chan Message -> IncomingTask -> IO ()
 sendAccept a@(AP {idAP=sid, caps=c}) afap ((tid, cid), _, AP {idAP=rid, incomingAP=apap}) = do
@@ -158,7 +207,7 @@ waitForAllReplyDone a@(AP {incomingAP=c}) ts = recvAllReplyDone [] ([], [])
         AllReplyDone -> putBackAll ms c >> return r
         Accept a id cost -> recvAllReplyDone ms (rd, (findTask id, Just cost, a) : ra)
         Deny a id cost -> recvAllReplyDone ms (findTask id : rd, ra)
-        _ -> print ("msg", m) >> recvAllReplyDone (m:ms) r
+        _ -> recvAllReplyDone (m:ms) r
     findTask tid = doFindTask tid ts
     doFindTask tid [] = error "Dreaming..."
     doFindTask tid (t:ts)

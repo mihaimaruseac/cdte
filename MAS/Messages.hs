@@ -34,6 +34,8 @@ pprintMsg (Cfp _ tid cid Nothing) = "cfp for " ++ pprintTask (tid, cid) ++ " (no
 pprintMsg (Cfp _ tid cid (Just x)) = "cfp for " ++ pprintTask (tid, cid) ++ " cost " ++ show x
 pprintMsg (Deny (AP {idAP=sid}) tid r) = "AP" ++ show sid ++ " denies task " ++ show tid ++ ": " ++ show r
 pprintMsg (Accept (AP {idAP=sid}) tid c) = "AP" ++ show sid ++ " accepts task " ++ show tid ++ " for " ++ show c
+pprintMsg (Go tid cid) = "Do task " ++ show tid ++ " (cap " ++ show cid ++ ")"
+pprintMsg (No tid cid) = "Don't do task " ++ show tid ++ " (cap " ++ show cid ++ ")"
 pprintMsg m = show m
 
 data Reason
@@ -74,7 +76,7 @@ instance Show AF where
 
 putBackAll :: [Message] -> Chan Message -> IO ()
 putBackAll [] _ = return ()
-putBackAll [m] c = putStrLn ("putback " ++ show m) >> writeChan c m
+putBackAll [m] c = writeChan c m
 putBackAll (m:ms) c = putBackAll ms c >> writeChan c m
 
 pprintAP :: AP -> String

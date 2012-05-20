@@ -36,7 +36,7 @@ agentLoopAF af t = do
 
 doLoop :: AF -> Time -> IO ()
 doLoop af@(AF {agentList=ag, taskList=tl}) t'
-  | t' >= 5 = putStrLn "Stopped" >> return () -- stop loop
+  | t' >= 1000 = putStrLn "Stopped" >> return () -- stop loop
   | tl == [] = readyDistributeTasks [] ag >> agentLoopNoTasksToSend af t' -- only wait
   | otherwise = agentLoopSendingTasks af t'
 
@@ -143,8 +143,8 @@ receiveTasksDone a@(AF {numAgents=n, incoming=c}) = doRTD n c []
     doRTD n inc ms = do
       m <- readChan c
       case m of
+        Notify sid rid m' -> notifyMsg m >> doRTD n inc ms
         WillDo aid todo lo -> do
-          putStrLn $ "Received from " ++ show aid ++ "> " ++ show todo ++ "|" ++ show lo
           putBackAll ms inc
           ret <- doRTD (n - 1) inc ms
           return $ (aid, todo, lo) : ret
