@@ -9,7 +9,7 @@ be displayed to output.
 import Control.Concurrent
 import Control.Concurrent.Chan
 import Control.Concurrent.MVar
-import Control.Monad (when, replicateM, forM_)
+import Control.Monad (when, replicateM, forM_, unless)
 import Data.List (groupBy)
 
 import MAS.AP
@@ -48,23 +48,29 @@ agentLoopAF af t = do
 
 doLoop :: AF -> Time -> IO ()
 doLoop af@(AF { taskList = tl }) t'
-  | tl == [] = agentLoopFinishLeftOvers af t'
+  | tl == [] = agentLoopNoTasksToSend af t'
   | otherwise = agentLoopSendingTasks af t'
+
+agentLoopPhase2 :: AF -> Time -> IO ()
+agentLoopPhase2 af@(AF { agentList=ags, taskList=tl }) t = do
+  print "Next loop"
+  unless (tl == [] && (all finished ags)) $ agentLoopAF af (t + 1)
 
 agentLoopSendingTasks :: AF -> Time -> IO ()
 agentLoopSendingTasks af@(AF { taskList = (t, _):_ }) t'
   | t == t' + 1 = doSendTasks af t'
-  | otherwise = agentLoopFinishLeftOvers af t' -- only wait
+  | otherwise = agentLoopNoTasksToSend af t' -- only wait
 
-agentLoopFinishLeftOvers :: AF -> Time -> IO ()
-agentLoopFinishLeftOvers = undefined
+agentLoopNoTasksToSend :: AF -> Time -> IO ()
+agentLoopNoTasksToSend af t = do
+  -- TODO: wait for negotiations
+  agentLoopPhase2 af t
 
 doSendTasks :: AF -> Time -> IO ()
 doSendTasks af@(AF { taskList = (_, ts):tss }) t = do
   distributeTasks $ computeOptimumTaskDistribution af ts
-  print "Next loop"
   let af' = af { taskList = tss }
-  agentLoopAF af' (t + 1)
+  agentLoopNoTasksToSend af' t
 
 computeOptimumTaskDistribution :: AF -> [Task] -> [(AP, [Task])]
 computeOptimumTaskDistribution af t = [(head $ agentList af, t)]

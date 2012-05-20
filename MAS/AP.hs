@@ -18,7 +18,19 @@ data AP = AP
   , caps :: [Cap]
   , afap :: Chan Message -- to AF (incoming for AF)
   , incomingAP :: Chan Message -- incoming to me
+  , tasksToDo :: [Task] -- received now from AF
+  , leftOvers :: [Task] -- task not done previously
+  , tasksFromOthers :: [Task] -- from other agents
   }
+
+-- received from AF, received from other APs and leftovers
+tasksToConsider :: AP -> [Task]
+tasksToConsider a@(AP { tasksToDo=tdd, leftOvers=lo, tasksFromOthers=tfo})
+  = tdd ++ lo ++ tfo
+
+-- Return True if I have no task to do (at all).
+finished :: AP -> Bool
+finished a@(AP { leftOvers=lo }) = lo == []
 
 agentLoopAP :: AP -> IO ()
 agentLoopAP ap = do
@@ -41,7 +53,7 @@ agentLoopAP ap = do
   writeChan (afap ap) $ End $ idAP ap
 
 buildAP :: ID -> Cost -> [Cap] -> Chan Message -> Chan Message -> AP
-buildAP i bdg caps afap incoming = AP i bdg caps afap incoming
+buildAP i bdg caps afap incoming = AP i bdg caps afap incoming [] [] []
 
 pprintAP :: AP -> String
 pprintAP a = "AP" ++ id ++ ": budget: " ++ bdg ++ " caps: " ++ capss
