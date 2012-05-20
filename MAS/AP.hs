@@ -47,9 +47,21 @@ planifyTasks a@(AP {budget=b, caps=c, leftOvers=lo, afap=afap,
     let toProposeTasks = filter (\(_, l) -> l /= []) taskInfo
     forM_ toProposeTasks (proposeTasksToAgents a)
     writeChan afap $ DoneCfp aid
+    proposedTaskList <- waitForAllCfpDone a
+    print proposedTaskList
     -- try to solve some tasks
     -- TODO distribute tasks to other agents
     return ([], all_tasks)
+
+waitForAllCfpDone :: AP -> IO [(Task, Maybe Cost, AP)]
+waitForAllCfpDone a@(AP {incomingAP=c}) = recvAllCfpDone [] []
+  where
+    recvAllCfpDone ms r = do
+      m <- readChan c
+      case m of
+        AllCfpDone -> putBackAll ms c >> return r
+        Cfp ag tid cid agCost -> recvAllCfpDone ms $ ((tid, cid), agCost, ag) : r
+        _ -> recvAllCfpDone (m:ms) r
 
 askAboutOthers :: Chan Message -> AP -> [Task] -> IO [(Task, [AP])]
 askAboutOthers afap a = mapM (askOne afap a)
@@ -74,7 +86,6 @@ proposeTaskToAgent :: AP -> Task -> AP -> IO ()
 proposeTaskToAgent a@(AP {caps=caps, idAP=sid, afap=afap}) (tid, cid)
   (AP {incomingAP=apap, idAP=rid}) = do
     let msg = Cfp a tid cid (lookup cid caps)
-    putStrLn $ show sid ++ " -> " ++ show rid ++ " sending " ++ show msg
     writeChan apap msg
     writeChan afap $ Notify sid rid msg
 

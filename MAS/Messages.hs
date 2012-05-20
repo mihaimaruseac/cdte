@@ -18,6 +18,7 @@ data Message
   | AnsCap ID [AP] -- reply to the above request (AF->AP)
   | DoneAsking ID -- AP with ID has finished asking about caps
   | DoneCfp ID -- AP with ID has finished sending cfp
+  | AllCfpDone -- announce all APs that all of them finished sending cfps
   | Cfp AP ID ID (Maybe Cost) -- cfp: me, task id, cap id, my cost (or Nothing) (AP->AP)
   | Deny AP ID Reason -- deny cfp: who denied, what task, what reason (AP->AP)
   | Accept AP ID Cost -- accept cfp: who accepts, what task, what cost (AP->AP)

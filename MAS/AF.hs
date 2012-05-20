@@ -81,6 +81,7 @@ agentLoopNoTasksToSend :: AF -> Time -> IO ()
 agentLoopNoTasksToSend af@(AF {agentList=ag, numAgents=n}) t = do
   receiveAllRequests af
   waitDoneCfps (incoming af) [1..n] []
+  sendAllCfpDone ag
   -- TODO: wait for negotiations
   agentLoopPhase2 af t
 
@@ -104,6 +105,9 @@ doSendTasks af@(AF { agentList=ag, taskList=(_, ts):tss }) t = do
   readyDistributeTasks otd ag
   let af' = af { taskList = tss }
   agentLoopNoTasksToSend af' t
+
+sendAllCfpDone :: [AP] -> IO ()
+sendAllCfpDone = mapM_ (flip writeChan AllCfpDone . incomingAP)
 
 -- receive AskCap messages and send AnsCap back
 receiveAllRequests :: AF -> IO ()
