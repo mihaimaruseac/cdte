@@ -85,13 +85,18 @@ doSendTasks af@(AF { agentList=ag, taskList=(_, ts):tss }) t = do
       | x `elem` map fst l = fillIn l xs
       | otherwise = (x, []) : fillIn l xs
 
-receiveTasksDone :: AF -> IO ()
-receiveTasksDone a@(AF {numAgents=n, incoming=c}) = doRTD n c
+receiveTasksDone :: AF -> IO [(ID, [Task], [Task])]
+receiveTasksDone a@(AF {numAgents=n, incoming=c}) = doRTD n c []
   where
-    doRTD 0 _ = return () -- TODO
-    doRTD n inc = do
+    doRTD 0 _ _ = return []
+    doRTD n inc ms = do
       m <- readChan c
-      if isEnd m then doRTD (n - 1) inc else doRTD n inc
+      case m of
+        WillDo aid todo lo -> do
+          putBackAll ms inc
+          ret <- doRTD (n - 1) inc ms
+          return $ (aid, todo, lo) : ret
+        _ -> doRTD n inc (m:ms)
 
 computeOptimumTaskDistribution :: AF -> [Task] -> [(AP, [Task])]
 computeOptimumTaskDistribution af t = [(head $ agentList af, t)]

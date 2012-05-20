@@ -12,6 +12,8 @@ type Comm = (Chan Message, Chan Message)
 data Message
   = None Int
   | Tasks [Task] -- list of tasks to do this step (only af->ap)
+  | WillDo ID [Task] [Task] -- list of tasks that AP ID will do and list of
+                            -- leftovers (AP->AF)
   | End ID
   deriving (Show)
 

@@ -26,14 +26,10 @@ finished :: AP -> Bool
 finished a@(AP { leftOvers=lo }) = lo == []
 
 agentLoopAP :: AP -> IO ()
-agentLoopAP a@(AP { afap=afap }) = do
+agentLoopAP a@(AP {idAP=aid, afap=afap}) = do
   t <- receiveTasks a []
-  (td, lo) <- planifyTasks a t
-  print $ "X" ++ show (td, lo)
-  print "ap"
-  print a
-  writeChan afap $End 42
-  print "Done"
+  (td, lo) <- planifyTasks a t []
+  writeChan afap $ WillDo aid td lo
 
 receiveTasks :: AP -> [Message] -> IO [Task]
 receiveTasks a@(AP { incomingAP=inc }) ms = do
@@ -44,10 +40,12 @@ receiveTasks a@(AP { incomingAP=inc }) ms = do
       return t
     _ -> receiveTasks a (m:ms)
 
-planifyTasks :: AP -> [Task] -> IO ([Task], [Task])
-planifyTasks a@(AP {budget=b, caps=c, leftOvers=lo, afap=afap, incomingAP=inc}) t = do
-  print (t, lo)
-  return (t, lo)
+planifyTasks :: AP -> [Task] -> [Task] -> IO ([Task], [Task])
+planifyTasks a@(AP {budget=b, caps=c, leftOvers=lo, afap=afap,
+  incomingAP=inc}) t r = do
+    let all_tasks = lo ++ t ++ r
+    -- TODO distribute tasks to other agents
+    return ([], all_tasks)
 
 buildAP :: ID -> Cost -> [Cap] -> Chan Message -> Chan Message -> AP
 buildAP i bdg caps afap incoming = AP i bdg caps afap incoming []
