@@ -37,13 +37,49 @@ prepareAndLaunch fname = do
   af <- parseSystemFile fname
   displayStartInfo af
   launchSystem af
+  agentLoopAF af 0
+  terminate af
+
+agentLoopAF :: AF -> Time -> IO ()
+agentLoopAF af t = do
+  putStrLn ""
+  putStrLn $ "Cycle " ++ show t ++ ", phase 1:"
+  doLoop af t
+
+doLoop :: AF -> Time -> IO ()
+doLoop af@(AF { taskList = tl }) t'
+  | tl == [] = agentLoopFinishLeftOvers af t'
+  | otherwise = agentLoopSendingTasks af t'
+
+agentLoopSendingTasks :: AF -> Time -> IO ()
+agentLoopSendingTasks af@(AF { taskList = (t, _):_ }) t'
+  | t == t' + 1 = doSendTasks af t'
+  | otherwise = agentLoopFinishLeftOvers af t' -- only wait
+
+agentLoopFinishLeftOvers :: AF -> Time -> IO ()
+agentLoopFinishLeftOvers = undefined
+
+doSendTasks :: AF -> Time -> IO ()
+doSendTasks af@(AF { taskList = (_, ts):tss }) t = do
+  distributeTasks $ computeOptimumTaskDistribution af ts
+  print "Next loop"
+  let af' = af { taskList = tss }
+  agentLoopAF af' (t + 1)
+
+computeOptimumTaskDistribution :: AF -> [Task] -> [(AP, [Task])]
+computeOptimumTaskDistribution af t = [(head $ agentList af, t)]
+
+distributeTasks :: [(AP, [Task])] -> IO ()
+distributeTasks = mapM_ distributeTasksToOneAgent
+
+distributeTasksToOneAgent :: (AP, [Task]) -> IO ()
+distributeTasksToOneAgent (a@AP { idAP = aid, incomingAP = c }, t) = do
+  putStrLn $ "AF -> AP" ++ show aid ++ ": " ++ pprintTasks t
+  writeChan c $ Tasks t
 
 launchSystem :: AF -> IO ()
 launchSystem af = do
-  print "Forking threads"
   mapM_ (forkIO . agentLoopAP) $ agentList af
-  terminate af
-  print "Done"
 
 -- wait for all termination messages
 terminate :: AF -> IO ()

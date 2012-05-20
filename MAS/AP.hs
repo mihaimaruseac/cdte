@@ -22,6 +22,7 @@ data AP = AP
 
 agentLoopAP :: AP -> IO ()
 agentLoopAP ap = do
+  {-
   print ap
   print "Started"
   writeChan (afap ap) $ None 1
@@ -36,6 +37,7 @@ agentLoopAP ap = do
   writeChan (afap ap) $ None 10
   writeChan (afap ap) $ None 11
   writeChan (afap ap) $ None 12
+  -}
   writeChan (afap ap) $ End $ idAP ap
 
 buildAP :: ID -> Cost -> [Cap] -> Chan Message -> Chan Message -> AP
