@@ -1,3 +1,5 @@
+{-# Language BangPatterns #-}
+
 module MAS.AF where
 
 {-
@@ -40,7 +42,7 @@ doLoop af@(AF { taskList = tl }) t'
 agentLoopPhase2 :: AF -> Time -> IO ()
 agentLoopPhase2 af@(AF { agentList=ags, taskList=tl, profit=p,
   leftOverPenalty=lop }) t = do
-    allTasks <- receiveTasksDone af
+    !allTasks <- receiveTasksDone af
     putStrLn ""
     putStrLn $ "Cycle " ++ show t ++ ", phase 2:"
     printAllTasks allTasks

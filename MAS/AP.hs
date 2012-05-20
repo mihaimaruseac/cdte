@@ -1,3 +1,5 @@
+{-# Language BangPatterns #-}
+
 module MAS.AP where
 
 {-
@@ -17,8 +19,8 @@ finished a@(AP { leftOvers=lo }) = lo == []
 
 agentLoopAP :: AP -> IO ()
 agentLoopAP a@(AP {idAP=aid, afap=afap}) = do
-  t <- receiveTasks a []
-  (td, lo) <- planifyTasks a t []
+  !t <- receiveTasks a []
+  !(td, lo) <- planifyTasks a t []
   let a' = a {leftOvers = lo}
   writeChan afap $ WillDo a' td lo
   agentLoopAP a' -- loop until killed by AF
