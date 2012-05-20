@@ -5,14 +5,12 @@ TARGET = cdte
 SOURCES = $(shell find . -type f -name '*.hs')
 HIFILES = $(patsubst %.hs, %.hi, $(SOURCES))
 OFILES = $(patsubst %.hs, %.o, $(SOURCES))
+GHCFLAGS = -threaded -rtsopts
 
-all: $(TARGET) run
+all: $(TARGET)
 
 $(TARGET): $(SOURCES)
-	@ghc --make Main.hs -o $(TARGET)
-
-run: $(TARGET)
-	./$(TARGET)
+	@ghc --make Main.hs -o $(TARGET) $(GHCFLAGS)
 
 clean:
 	@$(RM) $(TARGET) $(HIFILES) $(OFILES)
