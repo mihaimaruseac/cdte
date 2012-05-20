@@ -41,11 +41,12 @@ prepareAndLaunch fname = do
 launchSystem :: AF -> IO ()
 launchSystem af = do
   print "Forking threads"
-  mapM_ (\x -> forkIO (agentLoopAP x)) $ agentList af
+  mapM_ (forkIO . agentLoopAP) $ agentList af
   terminate af
   print "Done"
 
-
+-- wait for all termination messages
+terminate :: AF -> IO ()
 terminate af = doTerminate (numAgents af) (incoming af)
   where
     doTerminate 0 _ = return ()
