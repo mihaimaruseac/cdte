@@ -34,23 +34,17 @@ finished a@(AP { leftOvers=lo }) = lo == []
 
 agentLoopAP :: AP -> IO ()
 agentLoopAP ap = do
-  {-
-  print ap
-  print "Started"
-  writeChan (afap ap) $ None 1
-  writeChan (afap ap) $ None 2
-  writeChan (afap ap) $ None 3
-  writeChan (afap ap) $ None 4
-  writeChan (afap ap) $ None 5
-  writeChan (afap ap) $ None 6
-  writeChan (afap ap) $ None 7
-  writeChan (afap ap) $ None 8
-  writeChan (afap ap) $ None 9
-  writeChan (afap ap) $ None 10
-  writeChan (afap ap) $ None 11
-  writeChan (afap ap) $ None 12
-  -}
-  writeChan (afap ap) $ End $ idAP ap
+  t <- receiveTasks ap []
+  print $ "AP:" ++ show (ap, t)
+
+receiveTasks :: AP -> [Message] -> IO [Task]
+receiveTasks a@(AP { incomingAP=inc }) ms = do
+  m <- readChan inc
+  case m of
+    Tasks t -> do
+      putBackAll ms inc
+      return t
+    _ -> receiveTasks a (m:ms)
 
 buildAP :: ID -> Cost -> [Cap] -> Chan Message -> Chan Message -> AP
 buildAP i bdg caps afap incoming = AP i bdg caps afap incoming [] [] []
