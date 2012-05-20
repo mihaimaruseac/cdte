@@ -35,8 +35,8 @@ agentLoopAF af t = do
   doLoop af t
 
 doLoop :: AF -> Time -> IO ()
-doLoop af@(AF { taskList = tl }) t'
-  | tl == [] = agentLoopNoTasksToSend af t'
+doLoop af@(AF {agentList=ag, taskList=tl}) t'
+  | tl == [] = readyDistributeTasks [] ag >> agentLoopNoTasksToSend af t' -- only wait
   | otherwise = agentLoopSendingTasks af t'
 
 agentLoopPhase2 :: AF -> Time -> IO ()
@@ -72,13 +72,12 @@ printTasksOneAgent (AP {idAP=aid}, todo, leftOver) = do
   when (leftOver /= []) $ putStrLn $ "AP" ++ show aid ++ " postpones " ++ pprintTasks leftOver
 
 agentLoopSendingTasks :: AF -> Time -> IO ()
-agentLoopSendingTasks af@(AF { taskList = (t, _):_ }) t'
+agentLoopSendingTasks af@(AF {agentList=ag, taskList=(t, _):_ }) t'
   | t == t' + 1 = doSendTasks af t'
-  | otherwise = agentLoopNoTasksToSend af t' -- only wait
+  | otherwise = readyDistributeTasks [] ag >> agentLoopNoTasksToSend af t' -- only wait
 
 agentLoopNoTasksToSend :: AF -> Time -> IO ()
 agentLoopNoTasksToSend af@(AF { agentList=ag }) t = do
-  readyDistributeTasks [] ag
   -- TODO: wait for negotiations
   agentLoopPhase2 af t
 
