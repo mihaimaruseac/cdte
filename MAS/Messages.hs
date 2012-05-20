@@ -14,5 +14,6 @@ data Message
   | End ID
   deriving (Show)
 
+isEnd :: Message -> Bool
 isEnd (End _) = True
 isEnd _ = False
