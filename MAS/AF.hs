@@ -18,20 +18,6 @@ import MAS.Messages
 
 import Debug.Trace
 
--- The AF agent state.
-data AF = AF
-  { numAgents :: Int
-  , numTasks :: Int
-  , leftOverPenalty :: Cost
-  , agentList :: [AP]
-  , taskList :: [(Time, [Task])]
-  , incoming :: Chan Message
-  , profit :: Cost
-  }
-
-instance Show AF where
-  show af = show (numAgents af) ++ ": " ++ concatMap show (agentList af)
-
 -- Parses system file and construct the agents then start the environment.
 prepareAndLaunch :: String -> IO ()
 prepareAndLaunch fname = do
@@ -61,19 +47,24 @@ agentLoopPhase2 af@(AF { agentList=ags, taskList=tl, profit=p,
     let pNow = -lop * fromIntegral (getLeftOverCount allTasks)
     let p' = p + pNow
     putStrLn $ "Total profit: " ++ show p' ++ " (now: " ++ show pNow ++ ")"
-    let af' = af { profit = p' }
+    let af' = af { profit = p', agentList=getAgents allTasks }
     unless (tl == [] && all finished ags) $ agentLoopAF af' (t + 1)
 
-getLeftOverCount :: [(ID, [Task], [Task])] -> Int
+getLeftOverCount :: [(AP, [Task], [Task])] -> Int
 getLeftOverCount = length . concat . map thrd
   where
     thrd (_, _, x) = x
 
-printAllTasks :: [(ID, [Task], [Task])] -> IO ()
+getAgents :: [(AP, [Task], [Task])] -> [AP]
+getAgents = map fst3
+  where
+    fst3 (x, _, _) = x
+
+printAllTasks :: [(AP, [Task], [Task])] -> IO ()
 printAllTasks = mapM_ printTasksOneAgent
 
-printTasksOneAgent :: (ID, [Task], [Task]) -> IO ()
-printTasksOneAgent (aid, todo, leftOver) = do
+printTasksOneAgent :: (AP, [Task], [Task]) -> IO ()
+printTasksOneAgent (AP {idAP=aid}, todo, leftOver) = do
   when (todo /= []) $ putStrLn $ "AP" ++ show aid ++ " executes: " ++ pprintTasks todo
   when (leftOver /= []) $ putStrLn $ "AP" ++ show aid ++ " postpones " ++ pprintTasks leftOver
 
@@ -99,7 +90,7 @@ doSendTasks af@(AF { agentList=ag, taskList=(_, ts):tss }) t = do
       | x `elem` map fst l = fillIn l xs
       | otherwise = (x, []) : fillIn l xs
 
-receiveTasksDone :: AF -> IO [(ID, [Task], [Task])]
+receiveTasksDone :: AF -> IO [(AP, [Task], [Task])]
 receiveTasksDone a@(AF {numAgents=n, incoming=c}) = doRTD n c []
   where
     doRTD 0 _ _ = return []

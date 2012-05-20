@@ -11,16 +11,6 @@ import Control.Concurrent.MVar
 import MAS.GenericTypes
 import MAS.Messages
 
--- The AP agent state.
-data AP = AP
-  { idAP :: ID
-  , budget :: Cost
-  , caps :: [Cap]
-  , afap :: Chan Message -- to AF (incoming for AF)
-  , incomingAP :: Chan Message -- incoming to me
-  , leftOvers :: [Task] -- task not done previously
-  }
-
 -- Return True if I have no task to do (at all).
 finished :: AP -> Bool
 finished a@(AP { leftOvers=lo }) = lo == []
@@ -29,8 +19,9 @@ agentLoopAP :: AP -> IO ()
 agentLoopAP a@(AP {idAP=aid, afap=afap}) = do
   t <- receiveTasks a []
   (td, lo) <- planifyTasks a t []
-  writeChan afap $ WillDo aid td lo
-  agentLoopAP a -- loop until killed by AF
+  let a' = a {leftOvers = lo}
+  writeChan afap $ WillDo a' td lo
+  agentLoopAP a' -- loop until killed by AF
 
 receiveTasks :: AP -> [Message] -> IO [Task]
 receiveTasks a@(AP { incomingAP=inc }) ms = do
@@ -50,16 +41,3 @@ planifyTasks a@(AP {budget=b, caps=c, leftOvers=lo, afap=afap,
 
 buildAP :: ID -> Cost -> [Cap] -> Chan Message -> Chan Message -> AP
 buildAP i bdg caps afap incoming = AP i bdg caps afap incoming []
-
-pprintAP :: AP -> String
-pprintAP a = "AP" ++ id ++ ": budget: " ++ bdg ++ " caps: " ++ capss
-  where
-    id = show $ idAP a
-    bdg = show $ budget a
-    capss = pprintCaps $ caps a
-
-instance Show AP where
-  show = pprintAP
-
-instance Eq AP where
-  AP {idAP=id1} == AP {idAP=id2} = id1 == id2
