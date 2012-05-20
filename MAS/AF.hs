@@ -78,11 +78,12 @@ agentLoopSendingTasks af@(AF {agentList=ag, taskList=(t, _):_ }) t'
   | otherwise = readyDistributeTasks [] ag >> agentLoopNoTasksToSend af t' -- only wait
 
 agentLoopNoTasksToSend :: AF -> Time -> IO ()
-agentLoopNoTasksToSend af@(AF {agentList=ag, numAgents=n}) t = do
+agentLoopNoTasksToSend af@(AF {agentList=ag, numAgents=n, incoming=c}) t = do
   receiveAllRequests af
-  waitDoneCfps (incoming af) [1..n] []
+  waitDoneCfps c [1..n] []
   sendAllCfpDone ag
-  -- TODO: wait for negotiations
+  waitDoneReply c [1..n] []
+  sendAllReplyDone ag
   agentLoopPhase2 af t
 
 waitDoneCfps :: Chan Message -> [Int] -> [Message] -> IO ()
@@ -93,6 +94,15 @@ waitDoneCfps c l ms = do
     Notify sid rid m' -> notifyMsg m >> waitDoneCfps c l ms
     DoneCfp id -> waitDoneCfps c (l \\ [id]) ms
     _ -> waitDoneCfps c l (m:ms)
+
+waitDoneReply :: Chan Message -> [Int] -> [Message] -> IO ()
+waitDoneReply c [] ms = putBackAll ms c
+waitDoneReply c l ms = do
+  m <- readChan c
+  case m of
+    Notify sid rid m' -> notifyMsg m >> waitDoneReply c l ms
+    DoneReply id -> waitDoneReply c (l \\ [id]) ms
+    _ -> waitDoneReply c l (m:ms)
 
 notifyMsg :: Message -> IO ()
 notifyMsg (Notify sid rid m)
@@ -108,6 +118,9 @@ doSendTasks af@(AF { agentList=ag, taskList=(_, ts):tss }) t = do
 
 sendAllCfpDone :: [AP] -> IO ()
 sendAllCfpDone = mapM_ (flip writeChan AllCfpDone . incomingAP)
+
+sendAllReplyDone :: [AP] -> IO ()
+sendAllReplyDone = mapM_ (flip writeChan AllReplyDone . incomingAP)
 
 -- receive AskCap messages and send AnsCap back
 receiveAllRequests :: AF -> IO ()

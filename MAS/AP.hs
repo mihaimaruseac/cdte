@@ -70,9 +70,8 @@ planifyTasks a@(AP {budget=b, caps=c, leftOvers=lo, afap=afap,
     doSendDenyNonProfitable a afap nonProfitables
     -- accept tasks
     doAccept a afap $ todoTasks' ++ todoTasks''
-    -- TODO: discard wrong tasks
-    -- try to solve some tasks
-    -- TODO distribute tasks to other agents
+    writeChan afap $ DoneReply aid
+    -- wait for accept/deny and decide what to do
     return ([], all_tasks)
 
 myCapacity :: [Cap] -> Task -> Task -> Ordering
