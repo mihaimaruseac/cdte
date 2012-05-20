@@ -10,7 +10,7 @@ import Control.Concurrent
 import Control.Concurrent.Chan
 import Control.Concurrent.MVar
 import Control.Monad (when, replicateM, forM_, unless)
-import Data.List (groupBy)
+import Data.List (groupBy, sortBy)
 
 import MAS.AP
 import MAS.GenericTypes
@@ -56,9 +56,10 @@ getLeftOverCount = length . concat . map thrd
     thrd (_, _, x) = x
 
 getAgents :: [(AP, [Task], [Task])] -> [AP]
-getAgents = map fst3
+getAgents = sortBy sortAP . map fst3
   where
     fst3 (x, _, _) = x
+    sortAP (AP {idAP=id1}) (AP {idAP=id2}) = compare id1 id2
 
 printAllTasks :: [(AP, [Task], [Task])] -> IO ()
 printAllTasks = mapM_ printTasksOneAgent
