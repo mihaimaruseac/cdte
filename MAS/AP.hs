@@ -38,6 +38,9 @@ agentLoopAP ap = do
   writeChan (afap ap) $ None 12
   writeChan (afap ap) $ End $ idAP ap
 
+buildAP :: ID -> Cost -> [Cap] -> Chan Message -> Chan Message -> AP
+buildAP i bdg caps afap incoming = AP i bdg caps afap incoming
+
 pprintAP :: AP -> String
 pprintAP a = "AP" ++ id ++ ": budget: " ++ bdg ++ " caps: " ++ capss
   where

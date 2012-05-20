@@ -94,7 +94,7 @@ doParseAgents = map parseAgent
 parseAgent :: ((String, ID), Comm) -> AP
 parseAgent ((s, i), (afap, incoming))
   | even (length ws) = error "Invalid system file (wrong agent specification)"
-  | otherwise = AP i bdg caps afap incoming
+  | otherwise = buildAP i bdg caps afap incoming
   where
     ws = words s
     bdg = read $ head ws
