@@ -30,6 +30,7 @@ data Message
 pprintMsg :: Message -> String
 pprintMsg (Cfp _ tid cid Nothing) = "cfp for " ++ pprintTask (tid, cid) ++ " (no cost)"
 pprintMsg (Cfp _ tid cid (Just x)) = "cfp for " ++ pprintTask (tid, cid) ++ " cost " ++ show x
+pprintMsg (Deny (AP {idAP=sid}) tid r) = "AP" ++ show sid ++ " denies task " ++ show tid ++ ": " ++ show r
 pprintMsg m = show m
 
 data Reason

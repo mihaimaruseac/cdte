@@ -65,6 +65,8 @@ planifyTasks a@(AP {budget=b, caps=c, leftOvers=lo, afap=afap,
     let maybeTasks' = maybeTasks \\ nonProfitables
     let (newBudget'', todoTasks'', toLeaveTasks'') = planHelping (sortBy (incomingSort c) maybeTasks') newBudget' c
     print ("MM-all", newBudget'', todoTasks'', toLeaveTasks'', aid)
+    -- deny tasks
+    doSendDenyOutOfBudget a afap $ toLeaveTasks' ++ toLeaveTasks''
     -- TODO: discard wrong tasks
     -- try to solve some tasks
     -- TODO distribute tasks to other agents
@@ -109,6 +111,15 @@ planHelping ts b c = doPlan ts b c [] []
       Nothing -> error "Impossible situation"
       Just cost -> if cost <= b then doPlan ts (b - cost) c (t:todo) toleave
         else doPlan [] b c todo all
+
+doSendDenyOutOfBudget :: AP -> Chan Message -> [IncomingTask] -> IO ()
+doSendDenyOutOfBudget a afap = mapM_ (sendDenyOutOfBudget a afap)
+
+sendDenyOutOfBudget :: AP -> Chan Message -> IncomingTask -> IO ()
+sendDenyOutOfBudget a@(AP {idAP=sid}) afap ((tid, _), _, AP {idAP=rid, incomingAP=apap}) = do
+  let m = Deny a tid NoSpace
+  writeChan apap m
+  writeChan afap $ Notify sid rid m
 
 waitForAllCfpDone :: AP -> IO [(Task, Maybe Cost, AP)]
 waitForAllCfpDone a@(AP {incomingAP=c}) = recvAllCfpDone [] []
