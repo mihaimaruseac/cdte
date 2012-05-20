@@ -8,7 +8,6 @@ die () {
     exit 1
 }
 
-make clean
 [ -x ${EXEC} ] || make
 [ -x ${EXEC} ] || die
 
