@@ -18,24 +18,22 @@ data AP = AP
   , caps :: [Cap]
   , afap :: Chan Message -- to AF (incoming for AF)
   , incomingAP :: Chan Message -- incoming to me
-  , tasksToDo :: [Task] -- received now from AF
   , leftOvers :: [Task] -- task not done previously
-  , tasksFromOthers :: [Task] -- from other agents
   }
-
--- received from AF, received from other APs and leftovers
-tasksToConsider :: AP -> [Task]
-tasksToConsider a@(AP { tasksToDo=tdd, leftOvers=lo, tasksFromOthers=tfo})
-  = tdd ++ lo ++ tfo
 
 -- Return True if I have no task to do (at all).
 finished :: AP -> Bool
 finished a@(AP { leftOvers=lo }) = lo == []
 
 agentLoopAP :: AP -> IO ()
-agentLoopAP ap = do
-  t <- receiveTasks ap []
-  print $ "AP:" ++ show (ap, t)
+agentLoopAP a@(AP { afap=afap }) = do
+  t <- receiveTasks a []
+  (td, lo) <- planifyTasks a t
+  print $ "X" ++ show (td, lo)
+  print "ap"
+  print a
+  writeChan afap $End 42
+  print "Done"
 
 receiveTasks :: AP -> [Message] -> IO [Task]
 receiveTasks a@(AP { incomingAP=inc }) ms = do
@@ -46,8 +44,13 @@ receiveTasks a@(AP { incomingAP=inc }) ms = do
       return t
     _ -> receiveTasks a (m:ms)
 
+planifyTasks :: AP -> [Task] -> IO ([Task], [Task])
+planifyTasks a@(AP {budget=b, caps=c, leftOvers=lo, afap=afap, incomingAP=inc}) t = do
+  print (t, lo)
+  return (t, lo)
+
 buildAP :: ID -> Cost -> [Cap] -> Chan Message -> Chan Message -> AP
-buildAP i bdg caps afap incoming = AP i bdg caps afap incoming [] [] []
+buildAP i bdg caps afap incoming = AP i bdg caps afap incoming []
 
 pprintAP :: AP -> String
 pprintAP a = "AP" ++ id ++ ": budget: " ++ bdg ++ " caps: " ++ capss

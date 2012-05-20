@@ -53,9 +53,10 @@ doLoop af@(AF { taskList = tl }) t'
 
 agentLoopPhase2 :: AF -> Time -> IO ()
 agentLoopPhase2 af@(AF { agentList=ags, taskList=tl, profit=p }) t = do
+  -- TODO: read tasks done
+  receiveTasksDone af
   putStrLn ""
   putStrLn $ "Cycle " ++ show t ++ ", phase 2:"
-  -- TODO: read tasks done
   let pNow = 42 -- TODO
   let p' = p + pNow -- TODO
   putStrLn $ "Total profit: " ++ show p' ++ " (now: " ++ show pNow ++ ")"
@@ -77,6 +78,13 @@ doSendTasks af@(AF { taskList = (_, ts):tss }) t = do
   distributeTasks $ computeOptimumTaskDistribution af ts
   let af' = af { taskList = tss }
   agentLoopNoTasksToSend af' t
+receiveTasksDone :: AF -> IO ()
+receiveTasksDone a@(AF {numAgents=n, incoming=c}) = doRTD n c
+  where
+    doRTD 0 _ = return () -- TODO
+    doRTD n inc = do
+      m <- readChan c
+      if isEnd m then doRTD (n - 1) inc else doRTD n inc
 
 computeOptimumTaskDistribution :: AF -> [Task] -> [(AP, [Task])]
 computeOptimumTaskDistribution af t = [(head $ agentList af, t)]
