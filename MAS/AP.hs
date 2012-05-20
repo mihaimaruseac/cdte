@@ -67,6 +67,7 @@ planifyTasks a@(AP {budget=b, caps=c, leftOvers=lo, afap=afap,
     print ("MM-all", newBudget'', todoTasks'', toLeaveTasks'', aid)
     -- deny tasks
     doSendDenyOutOfBudget a afap $ toLeaveTasks' ++ toLeaveTasks''
+    doSendDenyNonProfitable a afap nonProfitables
     -- TODO: discard wrong tasks
     -- try to solve some tasks
     -- TODO distribute tasks to other agents
@@ -113,13 +114,16 @@ planHelping ts b c = doPlan ts b c [] []
         else doPlan [] b c todo all
 
 doSendDenyOutOfBudget :: AP -> Chan Message -> [IncomingTask] -> IO ()
-doSendDenyOutOfBudget a afap = mapM_ (sendDenyOutOfBudget a afap)
+doSendDenyOutOfBudget a afap = mapM_ (sendDeny NoSpace a afap)
 
-sendDenyOutOfBudget :: AP -> Chan Message -> IncomingTask -> IO ()
-sendDenyOutOfBudget a@(AP {idAP=sid}) afap ((tid, _), _, AP {idAP=rid, incomingAP=apap}) = do
-  let m = Deny a tid NoSpace
+sendDeny :: Reason -> AP -> Chan Message -> IncomingTask -> IO ()
+sendDeny r a@(AP {idAP=sid}) afap ((tid, _), _, AP {idAP=rid, incomingAP=apap}) = do
+  let m = Deny a tid r
   writeChan apap m
   writeChan afap $ Notify sid rid m
+
+doSendDenyNonProfitable :: AP -> Chan Message -> [IncomingTask] -> IO ()
+doSendDenyNonProfitable a afap = mapM_ (sendDeny NoProfit a afap)
 
 waitForAllCfpDone :: AP -> IO [(Task, Maybe Cost, AP)]
 waitForAllCfpDone a@(AP {incomingAP=c}) = recvAllCfpDone [] []
