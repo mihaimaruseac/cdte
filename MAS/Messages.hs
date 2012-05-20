@@ -9,12 +9,25 @@ import Control.Concurrent.Chan
 import MAS.GenericTypes
 
 type Comm = (Chan Message, Chan Message)
+
 data Message
-  = None Int
-  | Tasks [Task] -- list of tasks to do this step (only af->ap)
+  = Tasks [Task] -- list of tasks to do this step (only af->ap)
   | WillDo AP [Task] [Task] -- list of tasks that AP will do and list of
                             -- leftovers (AP->AF)
-  | End ID
+  | AskCap AP ID -- ask which other AP can do tasks requiring ID (AP->AF)
+  | AnsCap ID [AP] -- reply to the above request (AF->AP)
+  | Cfp AP ID ID (Maybe Cost) -- cfp: me, task id, cap id, my cost (or Nothing) (AP->AP)
+  | Deny AP ID Reason -- deny cfp: who denied, what task, what reason (AP->AP)
+  | Accept AP ID Cost -- accept cfp: who accepts, what task, what cost (AP->AP)
+  | Go ID ID -- AP can do task ID with cap ID (traded task) (AP->AP)
+  | No ID ID -- AP cannot do task, given to other (AP->AP)
+  | Notify Message -- notify AF about message between APs
+  deriving (Show)
+
+data Reason
+  = NoProfit -- doing this task will not increase profit / social welfare
+  | Unable -- I cannot do this task, why did you send it to me?
+  | NoSpace -- I'd do this task but I don't have budget left
   deriving (Show)
 
 -- The AP agent state.
@@ -49,7 +62,7 @@ instance Show AF where
 
 putBackAll :: [Message] -> Chan Message -> IO ()
 putBackAll [] _ = return ()
-putBackAll [m] c = print ("putback" ++ show m) >> writeChan c m
+putBackAll [m] c = putStrLn ("putback " ++ show m) >> writeChan c m
 putBackAll (m:ms) c = putBackAll ms c >> writeChan c m
 
 pprintAP :: AP -> String

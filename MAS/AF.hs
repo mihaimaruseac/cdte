@@ -97,6 +97,7 @@ receiveTasksDone a@(AF {numAgents=n, incoming=c}) = doRTD n c []
       m <- readChan c
       case m of
         WillDo aid todo lo -> do
+          putStrLn $ "Received from " ++ show aid ++ "> " ++ show todo ++ "|" ++ show lo
           putBackAll ms inc
           ret <- doRTD (n - 1) inc ms
           return $ (aid, todo, lo) : ret

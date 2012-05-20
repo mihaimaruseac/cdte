@@ -38,8 +38,18 @@ planifyTasks :: AP -> [Task] -> [Task] -> IO ([Task], [Task])
 planifyTasks a@(AP {budget=b, caps=c, leftOvers=lo, afap=afap,
   incomingAP=inc}) t r = do
     let all_tasks = lo ++ t ++ r
+    taskWhichICanGive <- askAboutOthers afap a all_tasks
     -- TODO distribute tasks to other agents
     return ([], all_tasks)
+
+askAboutOthers :: Chan Message -> AP -> [Task] -> IO [(Task, Maybe AP)]
+askAboutOthers afap a = mapM (askOne afap a)
+
+askOne :: Chan Message -> AP -> Task -> IO (Task, Maybe AP)
+askOne afap a t@(tid, cid) = do
+  print $ show (a, "Asking about ", tid, cid)
+  writeChan afap $ AskCap a cid
+  return (t, Nothing) --TODO
 
 buildAP :: ID -> Cost -> [Cap] -> Chan Message -> Chan Message -> AP
 buildAP i bdg caps afap incoming = AP i bdg caps afap incoming []
