@@ -162,7 +162,7 @@ parseSystemFile fname = do
   chans <- replicateM n newChan
   let c = map (\x-> (inc, x)) chans
   -- return agent
-  return $ AF n tc lp (parseAgents a c n) (parseTasks t) inc 0
+  return $ AF n tc lp (parseAgents a c n lp) (parseTasks t) inc 0
 
 -- Prints the startup information
 displayStartInfo :: AF -> IO ()
@@ -171,20 +171,20 @@ displayStartInfo af = do
   mapM_ print $ agentList af
 
 -- Parses the agent lists. (checks if the agent count is good).
-parseAgents :: [String] -> [Comm] -> Int -> [AP]
-parseAgents l c n
-  | length l == n = doParseAgents $ zip (zip l [1..]) c
+parseAgents :: [String] -> [Comm] -> Int -> Cost -> [AP]
+parseAgents l c n lop
+  | length l == n = doParseAgents lop $ zip (zip l [1..]) c
   | otherwise = error "Invalid system file (declared agents and count of agents don't match)"
 
 -- Parses the agent list.
-doParseAgents :: [((String, ID), Comm)] -> [AP]
-doParseAgents = map parseAgent
+doParseAgents :: Cost -> [((String, ID), Comm)] -> [AP]
+doParseAgents lop = map (parseAgent lop)
 
 -- Parses a single agent.
-parseAgent :: ((String, ID), Comm) -> AP
-parseAgent ((s, i), (afap, incoming))
+parseAgent :: Cost -> ((String, ID), Comm) -> AP
+parseAgent lop ((s, i), (afap, incoming))
   | even (length ws) = error "Invalid system file (wrong agent specification)"
-  | otherwise = buildAP i bdg caps afap incoming
+  | otherwise = buildAP i bdg lop caps afap incoming
   where
     ws = words s
     bdg = read $ head ws

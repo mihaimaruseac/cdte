@@ -39,6 +39,7 @@ data AP = AP
   , afap :: Chan Message -- to AF (incoming for AF)
   , incomingAP :: Chan Message -- incoming to me
   , leftOvers :: [Task] -- task not done previously
+  , lop :: Cost -- to be used when planning
   }
 
 -- The AF agent state.

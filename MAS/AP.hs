@@ -64,5 +64,5 @@ askOne afap a t@(tid, cid) = do
           return (t, aps)
         _ -> waitForReply (m:ms) c
 
-buildAP :: ID -> Cost -> [Cap] -> Chan Message -> Chan Message -> AP
-buildAP i bdg caps afap incoming = AP i bdg caps afap incoming []
+buildAP :: ID -> Cost -> Cost -> [Cap] -> Chan Message -> Chan Message -> AP
+buildAP i bdg lop caps afap incoming = AP i bdg caps afap incoming [] lop
