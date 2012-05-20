@@ -32,9 +32,8 @@ prepareAndLaunch fname = do
 -- Prints the startup information
 displayStartInfo :: AF -> IO ()
 displayStartInfo af = do
-  putStrLn $ "System start: " ++ (show $ numAgents af) ++ " agents."
-  mapM putStrLn . map pprintAP . agentList $ af
-  putStrLn ""
+  putStrLn $ "System start: " ++ show (numAgents af) ++ " agents."
+  mapM_ (putStrLn . pprintAP) $ agentList af
 
 -- Parses system file content. Build the AF agent.
 parseFileContent :: String -> AF
@@ -79,11 +78,11 @@ parseAgent (s, i)
     bdg = read $ head ws
     caps = buildCapLists $ tail ws
     buildCapLists [] = []
-    buildCapLists (cap:cost:ccs) = ((read cap), (read cost)) : buildCapLists ccs
+    buildCapLists (cap:cost:ccs) = (read cap, read cost) : buildCapLists ccs
 
 -- Checks the length of the task lists and start parsing it.
 parseTasks :: [String] -> [(Time, [Task])]
-parseTasks l = doParseTasks (map (map read) (map words l)) 1 1
+parseTasks l = doParseTasks (map (map read . words) l) 1 1
 
 -- Parse tasks
 doParseTasks :: [[ID]] -> Time -> ID -> [(Time, [Task])]
