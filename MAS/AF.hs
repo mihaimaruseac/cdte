@@ -151,7 +151,7 @@ receiveTasksDone a@(AF {numAgents=n, incoming=c}) = doRTD n c []
         _ -> doRTD n inc (m:ms)
 
 computeOptimumTaskDistribution :: AF -> [Task] -> [(AP, [Task])]
-computeOptimumTaskDistribution af t = [(head $ agentList af, t)] -- TODO
+computeOptimumTaskDistribution af t = [(head $ agentList af, t)]
 
 findAllCapable :: AF -> AP -> ID -> [AP]
 findAllCapable a@(AF {agentList=ags}) ap id = filter hasCap ags \\ [ap]
