@@ -68,6 +68,8 @@ planifyTasks a@(AP {budget=b, caps=c, leftOvers=lo, afap=afap,
     -- deny tasks
     doSendDenyOutOfBudget a afap $ toLeaveTasks' ++ toLeaveTasks''
     doSendDenyNonProfitable a afap nonProfitables
+    -- accept tasks
+    doAccept a afap $ todoTasks' ++ todoTasks''
     -- TODO: discard wrong tasks
     -- try to solve some tasks
     -- TODO distribute tasks to other agents
@@ -124,6 +126,19 @@ sendDeny r a@(AP {idAP=sid}) afap ((tid, _), _, AP {idAP=rid, incomingAP=apap}) 
 
 doSendDenyNonProfitable :: AP -> Chan Message -> [IncomingTask] -> IO ()
 doSendDenyNonProfitable a afap = mapM_ (sendDeny NoProfit a afap)
+
+doAccept :: AP -> Chan Message -> [IncomingTask] -> IO ()
+doAccept a afap = mapM_ (sendAccept a afap)
+
+sendAccept :: AP -> Chan Message -> IncomingTask -> IO ()
+sendAccept a@(AP {idAP=sid, caps=c}) afap ((tid, cid), _, AP {idAP=rid, incomingAP=apap}) = do
+  let m = Accept a tid cost
+  writeChan apap m
+  writeChan afap $ Notify sid rid m
+  where
+    cost = case lookup cid c of
+      Nothing -> error "Are you sure?"
+      Just x -> x
 
 waitForAllCfpDone :: AP -> IO [(Task, Maybe Cost, AP)]
 waitForAllCfpDone a@(AP {incomingAP=c}) = recvAllCfpDone [] []
