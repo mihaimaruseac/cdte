@@ -61,7 +61,7 @@ agentLoopPhase2 af@(AF { agentList=ags, taskList=tl, profit=p }) t = do
   let p' = p + pNow -- TODO
   putStrLn $ "Total profit: " ++ show p' ++ " (now: " ++ show pNow ++ ")"
   let af' = af { profit = p' }
-  unless (tl == [] && (all finished ags)) $ agentLoopAF af' (t + 1)
+  unless (tl == [] && all finished ags) $ agentLoopAF af' (t + 1)
 
 agentLoopSendingTasks :: AF -> Time -> IO ()
 agentLoopSendingTasks af@(AF { taskList = (t, _):_ }) t'
@@ -91,8 +91,7 @@ distributeTasksToOneAgent (a@AP { idAP = aid, incomingAP = c }, t) = do
   writeChan c $ Tasks t
 
 launchSystem :: AF -> IO ()
-launchSystem af = do
-  mapM_ (forkIO . agentLoopAP) $ agentList af
+launchSystem af = mapM_ (forkIO . agentLoopAP) $ agentList af
 
 -- wait for all termination messages
 terminate :: AF -> IO ()
