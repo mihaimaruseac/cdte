@@ -6,9 +6,10 @@ configuration, this module is also responsible for getting the informations to
 be displayed to output.
 -}
 
+import Control.Concurrent
 import Control.Concurrent.Chan
 import Control.Concurrent.MVar
-import Control.Monad (when, replicateM)
+import Control.Monad (when, replicateM, forM_)
 import Data.List (groupBy)
 
 import MAS.AP
@@ -24,13 +25,34 @@ data AF = AF
   , leftOverPenalty :: Float
   , agentList :: [AP]
   , taskList :: [(Time, [Task])]
-  } deriving (Show)
+  , incoming :: Chan Message
+  }
+
+instance Show AF where
+  show af = show (numAgents af) ++ ": " ++ concatMap show (agentList af)
 
 -- Parses system file and construct the agents then start the environment.
 prepareAndLaunch :: String -> IO ()
 prepareAndLaunch fname = do
   af <- parseSystemFile fname
   displayStartInfo af
+  launchSystem af
+
+launchSystem :: AF -> IO ()
+launchSystem af = do
+  print "Forking threads"
+  mapM_ (\x -> forkIO (agentLoopAP x)) $ agentList af
+  terminate af
+  print "Done"
+
+
+terminate af = doTerminate (numAgents af) (incoming af)
+  where
+    doTerminate 0 _ = return ()
+    doTerminate n inc = do
+      m <- readChan inc
+      print m
+      if isEnd m then doTerminate (n - 1) inc else doTerminate n inc
 
 -- Parse system file
 parseSystemFile :: String -> IO AF
@@ -45,11 +67,11 @@ parseSystemFile fname = do
   let [n, tc] = map read $ take 2 fl
   let lp = read $ fl !! 2
   -- build communication primitives
-  mvars <- replicateM n newEmptyMVar
+  inc <- newChan
   chans <- replicateM n newChan
-  let c = zip mvars chans
+  let c = map (\x-> (inc, x)) chans
   -- return agent
-  return $ AF n tc lp (parseAgents a c n) (parseTasks t)
+  return $ AF n tc lp (parseAgents a c n) (parseTasks t) inc
 
 -- Prints the startup information
 displayStartInfo :: AF -> IO ()

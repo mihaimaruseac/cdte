@@ -5,10 +5,14 @@ Message types.
 -}
 
 import Control.Concurrent.Chan
-import Control.Concurrent.MVar
 
+import MAS.GenericTypes
+
+type Comm = (Chan Message, Chan Message)
 data Message
-  = None
+  = None Int
+  | End ID
   deriving (Show)
 
-type Comm = (MVar Message, Chan Message)
+isEnd (End _) = True
+isEnd _ = False

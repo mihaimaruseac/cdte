@@ -1,7 +1,7 @@
 #!/bin/bash
 
 EXEC="cdte"
-RUN="./"${EXEC}" +RTS -N32 --RTS"
+RUN="./"${EXEC}" +RTS -N2 --RTS"
 
 die () {
     echo "Cannot build."
