@@ -22,7 +22,7 @@ data Message
   | Accept AP ID Cost -- accept cfp: who accepts, what task, what cost (AP->AP)
   | Go ID ID -- AP can do task ID with cap ID (traded task) (AP->AP)
   | No ID ID -- AP cannot do task, given to other (AP->AP)
-  | Notify Message -- notify AF about message between APs
+  | Notify ID ID Message -- notify AF about message between APs
   deriving (Show)
 
 data Reason

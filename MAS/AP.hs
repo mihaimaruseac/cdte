@@ -9,6 +9,7 @@ constructed by giving the entire argument lists to the constructor.
 
 import Control.Concurrent.Chan
 import Control.Concurrent.MVar
+import Control.Monad (when, replicateM, forM_, unless)
 
 import MAS.GenericTypes
 import MAS.Messages
@@ -41,7 +42,9 @@ planifyTasks a@(AP {budget=b, caps=c, leftOvers=lo, afap=afap,
     -- get info about tasks
     taskInfo <- askAboutOthers afap a all_tasks
     writeChan afap $ DoneAsking aid
-    print taskInfo
+    let myTasks = map fst $ filter (\(_,l) -> l == []) taskInfo
+    let toProposeTasks = filter (\(_, l) -> l /= []) taskInfo
+    forM_ toProposeTasks (proposeTasksToAgents a)
     -- try to solve some tasks
     -- TODO distribute tasks to other agents
     return ([], all_tasks)
@@ -51,7 +54,6 @@ askAboutOthers afap a = mapM (askOne afap a)
 
 askOne :: Chan Message -> AP -> Task -> IO (Task, [AP])
 askOne afap a t@(tid, cid) = do
-  putStrLn $ show a ++  " asking about " ++ show (tid, cid)
   writeChan afap $ AskCap a cid
   waitForReply [] (incomingAP a)
   where
@@ -60,9 +62,19 @@ askOne afap a t@(tid, cid) = do
       case m of
         AnsCap cid' aps -> if cid' /= cid then waitForReply (m:ms) c else do
           putBackAll ms c
-          putStrLn $ show a ++ " received " ++ show m
           return (t, aps)
         _ -> waitForReply (m:ms) c
+
+proposeTasksToAgents :: AP -> (Task, [AP]) -> IO ()
+proposeTasksToAgents a (task, alist) = mapM_ (proposeTaskToAgent a task) alist
+
+proposeTaskToAgent :: AP -> Task -> AP -> IO ()
+proposeTaskToAgent a@(AP {caps=caps, idAP=sid, afap=afap}) (tid, cid)
+  (AP {incomingAP=apap, idAP=rid}) = do
+    let msg = Cfp a tid cid (lookup cid caps)
+    putStrLn $ show sid ++ " -> " ++ show rid ++ " sending " ++ show msg
+    writeChan apap msg
+    writeChan afap $ Notify sid rid msg
 
 buildAP :: ID -> Cost -> Cost -> [Cap] -> Chan Message -> Chan Message -> AP
 buildAP i bdg lop caps afap incoming = AP i bdg caps afap incoming [] lop
