@@ -49,6 +49,7 @@ planifyTasks a@(AP {budget=b, caps=c, leftOvers=lo, afap=afap,
     let myTasks = sortBy (myCapacity c) $ map fst $ filter (\(_,l) -> l == []) taskInfo
     -- send proposals
     let toProposeTasks = filter (\(_, l) -> l /= []) taskInfo
+    let proposedTasksByMe = map fst toProposeTasks
     forM_ toProposeTasks (proposeTasksToAgents a)
     writeChan afap $ DoneCfp aid
     proposedTaskList <- waitForAllCfpDone a
@@ -56,15 +57,12 @@ planifyTasks a@(AP {budget=b, caps=c, leftOvers=lo, afap=afap,
     let maybeTasks = proposedTaskList \\ helpingTasks
     -- try to do as many of my tasks as possible
     let (newBudget, todoTasks, toLeaveTasks) = planMine myTasks b c
-    print ("MM-mine", newBudget, todoTasks, toLeaveTasks, aid)
     -- then, try to do as many of the helping tasks as possible
     let (newBudget', todoTasks', toLeaveTasks') = planHelping (sortBy (incomingSort c) helpingTasks) newBudget c
-    print ("MM-help", newBudget', todoTasks', toLeaveTasks', aid)
     -- plan maybes, as many as possible, after filtering non-profitable ones
     let nonProfitables = filter (nonProfitable c) maybeTasks
     let maybeTasks' = maybeTasks \\ nonProfitables
     let (newBudget'', todoTasks'', toLeaveTasks'') = planHelping (sortBy (incomingSort c) maybeTasks') newBudget' c
-    print ("MM-all", newBudget'', todoTasks'', toLeaveTasks'', aid)
     -- deny tasks
     doSendDenyOutOfBudget a afap $ toLeaveTasks' ++ toLeaveTasks''
     doSendDenyNonProfitable a afap nonProfitables
@@ -72,6 +70,8 @@ planifyTasks a@(AP {budget=b, caps=c, leftOvers=lo, afap=afap,
     doAccept a afap $ todoTasks' ++ todoTasks''
     writeChan afap $ DoneReply aid
     -- wait for accept/deny and decide what to do
+    (denied, accepted) <- waitForAllReplyDone a proposedTasksByMe
+    print ("MM-da", denied, accepted, aid)
     return ([], all_tasks)
 
 myCapacity :: [Cap] -> Task -> Task -> Ordering
@@ -148,6 +148,22 @@ waitForAllCfpDone a@(AP {incomingAP=c}) = recvAllCfpDone [] []
         AllCfpDone -> putBackAll ms c >> return r
         Cfp ag tid cid agCost -> recvAllCfpDone ms $ ((tid, cid), agCost, ag) : r
         _ -> recvAllCfpDone (m:ms) r
+
+waitForAllReplyDone :: AP -> [Task] -> IO ([Task], [IncomingTask])
+waitForAllReplyDone a@(AP {incomingAP=c}) ts = recvAllReplyDone [] ([], [])
+  where
+    recvAllReplyDone ms r@(rd, ra) = do
+      m <- readChan c
+      case m of
+        AllReplyDone -> putBackAll ms c >> return r
+        Accept a id cost -> recvAllReplyDone ms (rd, (findTask id, Just cost, a) : ra)
+        Deny a id cost -> recvAllReplyDone ms (findTask id : rd, ra)
+        _ -> print ("msg", m) >> recvAllReplyDone (m:ms) r
+    findTask tid = doFindTask tid ts
+    doFindTask tid [] = error "Dreaming..."
+    doFindTask tid (t:ts)
+      | tid == fst t = t
+      | otherwise = doFindTask tid ts
 
 askAboutOthers :: Chan Message -> AP -> [Task] -> IO [(Task, [AP])]
 askAboutOthers afap a = mapM (askOne afap a)
