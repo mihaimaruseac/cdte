@@ -30,6 +30,7 @@ agentLoopAP a@(AP {idAP=aid, afap=afap}) = do
   t <- receiveTasks a []
   (td, lo) <- planifyTasks a t []
   writeChan afap $ WillDo aid td lo
+  agentLoopAP a -- loop until killed by AF
 
 receiveTasks :: AP -> [Message] -> IO [Task]
 receiveTasks a@(AP { incomingAP=inc }) ms = do
