@@ -21,5 +21,5 @@ isEnd _ = False
 
 putBackAll :: [Message] -> Chan Message -> IO ()
 putBackAll [] _ = return ()
-putBackAll [m] c = writeChan c m
+putBackAll [m] c = print ("putback" ++ show m) >> writeChan c m
 putBackAll (m:ms) c = putBackAll ms c >> writeChan c m
