@@ -36,6 +36,7 @@ agentLoopAF af t = do
 
 doLoop :: AF -> Time -> IO ()
 doLoop af@(AF {agentList=ag, taskList=tl}) t'
+  | t' >= 5 = putStrLn "Stopped" >> return () -- stop loop
   | tl == [] = readyDistributeTasks [] ag >> agentLoopNoTasksToSend af t' -- only wait
   | otherwise = agentLoopSendingTasks af t'
 
@@ -102,7 +103,7 @@ receiveTasksDone a@(AF {numAgents=n, incoming=c}) = doRTD n c []
         _ -> doRTD n inc (m:ms)
 
 computeOptimumTaskDistribution :: AF -> [Task] -> [(AP, [Task])]
-computeOptimumTaskDistribution af t = [(head $ agentList af, t)]
+computeOptimumTaskDistribution af t = [(head $ agentList af, t)] -- TODO
 
 readyDistributeTasks :: [(AP, [Task])] -> [AP] -> IO ()
 readyDistributeTasks otd ag = distributeTasks $ fillIn otd ag
