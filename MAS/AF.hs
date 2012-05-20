@@ -52,16 +52,22 @@ doLoop af@(AF { taskList = tl }) t'
   | otherwise = agentLoopSendingTasks af t'
 
 agentLoopPhase2 :: AF -> Time -> IO ()
-agentLoopPhase2 af@(AF { agentList=ags, taskList=tl, profit=p }) t = do
-  allTasks <- receiveTasksDone af
-  putStrLn ""
-  putStrLn $ "Cycle " ++ show t ++ ", phase 2:"
-  printAllTasks allTasks
-  let pNow = 42 -- TODO
-  let p' = p + pNow -- TODO
-  putStrLn $ "Total profit: " ++ show p' ++ " (now: " ++ show pNow ++ ")"
-  let af' = af { profit = p' }
-  unless (tl == [] && all finished ags) $ agentLoopAF af' (t + 1)
+agentLoopPhase2 af@(AF { agentList=ags, taskList=tl, profit=p,
+  leftOverPenalty=lop }) t = do
+    allTasks <- receiveTasksDone af
+    putStrLn ""
+    putStrLn $ "Cycle " ++ show t ++ ", phase 2:"
+    printAllTasks allTasks
+    let pNow = -lop * fromIntegral (getLeftOverCount allTasks)
+    let p' = p + pNow
+    putStrLn $ "Total profit: " ++ show p' ++ " (now: " ++ show pNow ++ ")"
+    let af' = af { profit = p' }
+    unless (tl == [] && all finished ags) $ agentLoopAF af' (t + 1)
+
+getLeftOverCount :: [(ID, [Task], [Task])] -> Int
+getLeftOverCount = length . concat . map thrd
+  where
+    thrd (_, _, x) = x
 
 printAllTasks :: [(ID, [Task], [Task])] -> IO ()
 printAllTasks = mapM_ printTasksOneAgent
