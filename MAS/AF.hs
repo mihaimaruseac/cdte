@@ -6,10 +6,14 @@ configuration, this module is also responsible for getting the informations to
 be displayed to output.
 -}
 
+import Control.Concurrent.Chan
+import Control.Concurrent.MVar
+import Control.Monad (when, replicateM)
 import Data.List (groupBy)
 
 import MAS.AP
 import MAS.GenericTypes
+import MAS.Messages
 
 import Debug.Trace
 
@@ -25,9 +29,27 @@ data AF = AF
 -- Parses system file and construct the agents then start the environment.
 prepareAndLaunch :: String -> IO ()
 prepareAndLaunch fname = do
-  s <- readFile fname
-  let af = parseFileContent s
+  af <- parseSystemFile fname
   displayStartInfo af
+
+-- Parse system file
+parseSystemFile :: String -> IO AF
+parseSystemFile fname = do
+  s <- readFile fname
+  let g = groupBy (\x y -> x /= "" && y /= "") $ lines s
+  when (length g /= 5) $ error "Invalid system file (no two blank lines)"
+  let [ntlp, _, a, _, t] = g
+  when (length ntlp /= 1) $ error "Invalid system file (first line should be followed by blank)"
+  let fl = words . head $ ntlp
+  when (length fl /= 3) $ error "Invalid format for first line"
+  let [n, tc] = map read $ take 2 fl
+  let lp = read $ fl !! 2
+  -- build communication primitives
+  mvars <- replicateM n newEmptyMVar
+  chans <- replicateM n newChan
+  let c = zip mvars chans
+  -- return agent
+  return $ AF n tc lp (parseAgents a c n) (parseTasks t)
 
 -- Prints the startup information
 displayStartInfo :: AF -> IO ()
@@ -35,44 +57,21 @@ displayStartInfo af = do
   putStrLn $ "System start: " ++ show (numAgents af) ++ " agents."
   mapM_ (putStrLn . pprintAP) $ agentList af
 
--- Parses system file content. Build the AF agent.
-parseFileContent :: String -> AF
-parseFileContent s = parseFirstGroup ntlp a t
-  where
-    [ntlp, _, a, _, t] = if length g == 5 then g
-      else error "Invalid system file (check to have two blank lines)"
-    g = groupBy (\x y -> x /= "" && y /= "") $ lines s
-
--- Parses the first group of data in the system file.
-parseFirstGroup :: [String] -> [String] -> [String] -> AF
-parseFirstGroup [ntlp] a t = parseFirstLine ntlp a t
-parseFirstGroup _ _ _ = error "Invalid system file (first line should be followed by blank)"
-
--- Parses the first line: number of agent, time steps and leftoverpenalty
-parseFirstLine :: String -> [String] -> [String] -> AF
-parseFirstLine s a ts
-  | length fl == 3 = AF n t lp (parseAgents a n) (parseTasks ts)
-  | otherwise = error "Invalid format for first line"
-  where
-    fl = words s
-    [n, t] = map read $ take 2 fl
-    lp = read $ fl !! 2
-
 -- Parses the agent lists. (checks if the agent count is good).
-parseAgents :: [String] -> Int -> [AP]
-parseAgents l n
-  | length l == n = doParseAgents $ zip l [1..]
+parseAgents :: [String] -> [Comm] -> Int -> [AP]
+parseAgents l c n
+  | length l == n = doParseAgents $ zip (zip l [1..]) c
   | otherwise = error "Invalid system file (declared agents and count of agents don't match)"
 
 -- Parses the agent list.
-doParseAgents :: [(String, ID)] -> [AP]
+doParseAgents :: [((String, ID), Comm)] -> [AP]
 doParseAgents = map parseAgent
 
 -- Parses a single agent.
-parseAgent :: (String, ID) -> AP
-parseAgent (s, i)
+parseAgent :: ((String, ID), Comm) -> AP
+parseAgent ((s, i), (afap, incoming))
   | even (length ws) = error "Invalid system file (wrong agent specification)"
-  | otherwise = AP i bdg caps
+  | otherwise = AP i bdg caps afap incoming
   where
     ws = words s
     bdg = read $ head ws
