@@ -34,7 +34,6 @@ pprintMsg m = show m
 
 data Reason
   = NoProfit -- doing this task will not increase profit / social welfare
-  | Unable -- I cannot do this task, why did you send it to me?
   | NoSpace -- I'd do this task but I don't have budget left
   deriving (Show)
 

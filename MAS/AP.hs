@@ -60,6 +60,11 @@ planifyTasks a@(AP {budget=b, caps=c, leftOvers=lo, afap=afap,
     -- then, try to do as many of the helping tasks as possible
     let (newBudget', todoTasks', toLeaveTasks') = planHelping (sortBy (incomingSort c) helpingTasks) newBudget c
     print ("MM-help", newBudget', todoTasks', toLeaveTasks', aid)
+    -- plan maybes, as many as possible, after filtering non-profitable ones
+    let nonProfitables = filter (nonProfitable c) maybeTasks
+    let maybeTasks' = maybeTasks \\ nonProfitables
+    let (newBudget'', todoTasks'', toLeaveTasks'') = planHelping (sortBy (incomingSort c) maybeTasks') newBudget' c
+    print ("MM-all", newBudget'', todoTasks'', toLeaveTasks'', aid)
     -- TODO: discard wrong tasks
     -- try to solve some tasks
     -- TODO distribute tasks to other agents
@@ -80,6 +85,12 @@ incomingSort cap ((_, c1), _, _) ((_, c2), _, _) =
     Just co1 -> case lookup c2 cap of
       Nothing -> error "This shouldn't happen"
       Just co2 -> co1 `compare` co2
+
+nonProfitable :: [Cap] -> IncomingTask -> Bool
+nonProfitable cap ((_, c), Just x, _) = case lookup c cap of
+  Nothing -> error "Again, impossible."
+  Just c1 -> c1 > x
+nonProfitable _ _ = error "Again, impossible."
 
 planMine :: [Task] -> Cost -> [Cap] -> (Cost, [Task], [Task])
 planMine ts b c = doPlan ts b c [] []
