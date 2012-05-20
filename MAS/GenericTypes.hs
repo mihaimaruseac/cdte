@@ -15,4 +15,3 @@ pprintCaps = init . concatMap pprintCap
 
 pprintCap :: Cap -> String
 pprintCap (id, c) = show id ++ " (cost " ++ show c ++ ") "
-

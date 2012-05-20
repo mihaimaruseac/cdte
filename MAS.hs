@@ -7,4 +7,3 @@ application.
 -}
 
 import MAS.Main (mainMAS)
-
