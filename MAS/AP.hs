@@ -42,9 +42,11 @@ planifyTasks a@(AP {budget=b, caps=c, leftOvers=lo, afap=afap,
     -- get info about tasks
     taskInfo <- askAboutOthers afap a all_tasks
     writeChan afap $ DoneAsking aid
+    -- send proposals
     let myTasks = map fst $ filter (\(_,l) -> l == []) taskInfo
     let toProposeTasks = filter (\(_, l) -> l /= []) taskInfo
     forM_ toProposeTasks (proposeTasksToAgents a)
+    writeChan afap $ DoneCfp aid
     -- try to solve some tasks
     -- TODO distribute tasks to other agents
     return ([], all_tasks)

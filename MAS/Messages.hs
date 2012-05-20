@@ -17,6 +17,7 @@ data Message
   | AskCap AP ID -- ask which other AP can do tasks requiring ID (AP->AF)
   | AnsCap ID [AP] -- reply to the above request (AF->AP)
   | DoneAsking ID -- AP with ID has finished asking about caps
+  | DoneCfp ID -- AP with ID has finished sending cfp
   | Cfp AP ID ID (Maybe Cost) -- cfp: me, task id, cap id, my cost (or Nothing) (AP->AP)
   | Deny AP ID Reason -- deny cfp: who denied, what task, what reason (AP->AP)
   | Accept AP ID Cost -- accept cfp: who accepts, what task, what cost (AP->AP)
@@ -24,6 +25,11 @@ data Message
   | No ID ID -- AP cannot do task, given to other (AP->AP)
   | Notify ID ID Message -- notify AF about message between APs
   deriving (Show)
+
+pprintMsg :: Message -> String
+pprintMsg (Cfp _ tid cid Nothing) = "cfp for " ++ pprintTask (tid, cid) ++ " (no cost)"
+pprintMsg (Cfp _ tid cid (Just x)) = "cfp for " ++ pprintTask (tid, cid) ++ " cost " ++ show x
+pprintMsg m = show m
 
 data Reason
   = NoProfit -- doing this task will not increase profit / social welfare

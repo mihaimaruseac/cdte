@@ -78,10 +78,25 @@ agentLoopSendingTasks af@(AF {agentList=ag, taskList=(t, _):_ }) t'
   | otherwise = readyDistributeTasks [] ag >> agentLoopNoTasksToSend af t' -- only wait
 
 agentLoopNoTasksToSend :: AF -> Time -> IO ()
-agentLoopNoTasksToSend af@(AF { agentList=ag }) t = do
+agentLoopNoTasksToSend af@(AF {agentList=ag, numAgents=n}) t = do
   receiveAllRequests af
+  waitDoneCfps (incoming af) [1..n] []
   -- TODO: wait for negotiations
   agentLoopPhase2 af t
+
+waitDoneCfps :: Chan Message -> [Int] -> [Message] -> IO ()
+waitDoneCfps c [] ms = putBackAll ms c
+waitDoneCfps c l ms = do
+  m <- readChan c
+  case m of
+    Notify sid rid m' -> notifyMsg m >> waitDoneCfps c l ms
+    DoneCfp id -> waitDoneCfps c (l \\ [id]) ms
+    _ -> waitDoneCfps c l (m:ms)
+
+notifyMsg :: Message -> IO ()
+notifyMsg (Notify sid rid m)
+  = putStrLn $ "AP" ++ show sid ++ " -> AP" ++ show rid ++ ": " ++ pprintMsg m
+notifyMsg _ = error "Cannot notify this message"
 
 doSendTasks :: AF -> Time -> IO ()
 doSendTasks af@(AF { agentList=ag, taskList=(_, ts):tss }) t = do
