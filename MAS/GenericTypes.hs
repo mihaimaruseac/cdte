@@ -15,3 +15,9 @@ pprintCaps = init . concatMap pprintCap
 
 pprintCap :: Cap -> String
 pprintCap (id, c) = show id ++ " (cost " ++ show c ++ ") "
+
+pprintTasks :: [Task] -> String
+pprintTasks = init . init . concatMap pprintTask
+
+pprintTask :: Task -> String
+pprintTask (idt, idc) = "task " ++ show idt ++ " (cap " ++ show idc ++ "), "
