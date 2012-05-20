@@ -53,15 +53,23 @@ doLoop af@(AF { taskList = tl }) t'
 
 agentLoopPhase2 :: AF -> Time -> IO ()
 agentLoopPhase2 af@(AF { agentList=ags, taskList=tl, profit=p }) t = do
-  -- TODO: read tasks done
-  receiveTasksDone af
+  allTasks <- receiveTasksDone af
   putStrLn ""
   putStrLn $ "Cycle " ++ show t ++ ", phase 2:"
+  printAllTasks allTasks
   let pNow = 42 -- TODO
   let p' = p + pNow -- TODO
   putStrLn $ "Total profit: " ++ show p' ++ " (now: " ++ show pNow ++ ")"
   let af' = af { profit = p' }
   unless (tl == [] && all finished ags) $ agentLoopAF af' (t + 1)
+
+printAllTasks :: [(ID, [Task], [Task])] -> IO ()
+printAllTasks = mapM_ printTasksOneAgent
+
+printTasksOneAgent :: (ID, [Task], [Task]) -> IO ()
+printTasksOneAgent (aid, todo, leftOver) = do
+  when (todo /= []) $ putStrLn $ "AP" ++ show aid ++ " executes: " ++ pprintTasks todo
+  when (leftOver /= []) $ putStrLn $ "AP" ++ show aid ++ " postpones " ++ pprintTasks leftOver
 
 agentLoopSendingTasks :: AF -> Time -> IO ()
 agentLoopSendingTasks af@(AF { taskList = (t, _):_ }) t'
