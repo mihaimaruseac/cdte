@@ -55,7 +55,7 @@ parseSystemFile fname = do
 displayStartInfo :: AF -> IO ()
 displayStartInfo af = do
   putStrLn $ "System start: " ++ show (numAgents af) ++ " agents."
-  mapM_ (putStrLn . pprintAP) $ agentList af
+  mapM_ print $ agentList af
 
 -- Parses the agent lists. (checks if the agent count is good).
 parseAgents :: [String] -> [Comm] -> Int -> [AP]
