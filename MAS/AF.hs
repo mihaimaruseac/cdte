@@ -26,6 +26,7 @@ data AF = AF
   , agentList :: [AP]
   , taskList :: [(Time, [Task])]
   , incoming :: Chan Message
+  , profit :: Cost
   }
 
 instance Show AF where
@@ -52,9 +53,15 @@ doLoop af@(AF { taskList = tl }) t'
   | otherwise = agentLoopSendingTasks af t'
 
 agentLoopPhase2 :: AF -> Time -> IO ()
-agentLoopPhase2 af@(AF { agentList=ags, taskList=tl }) t = do
-  print "Next loop"
-  unless (tl == [] && (all finished ags)) $ agentLoopAF af (t + 1)
+agentLoopPhase2 af@(AF { agentList=ags, taskList=tl, profit=p }) t = do
+  putStrLn ""
+  putStrLn $ "Cycle " ++ show t ++ ", phase 2:"
+  -- TODO: read tasks done
+  let pNow = 42 -- TODO
+  let p' = p + pNow -- TODO
+  putStrLn $ "Total profit: " ++ show p' ++ " (now: " ++ show pNow ++ ")"
+  let af' = af { profit = p' }
+  unless (tl == [] && (all finished ags)) $ agentLoopAF af' (t + 1)
 
 agentLoopSendingTasks :: AF -> Time -> IO ()
 agentLoopSendingTasks af@(AF { taskList = (t, _):_ }) t'
@@ -114,7 +121,7 @@ parseSystemFile fname = do
   chans <- replicateM n newChan
   let c = map (\x-> (inc, x)) chans
   -- return agent
-  return $ AF n tc lp (parseAgents a c n) (parseTasks t) inc
+  return $ AF n tc lp (parseAgents a c n) (parseTasks t) inc 0
 
 -- Prints the startup information
 displayStartInfo :: AF -> IO ()
