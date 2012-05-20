@@ -21,7 +21,7 @@ import Debug.Trace
 -- The AF agent state.
 data AF = AF
   { numAgents :: Int
-  , numSteps :: Int
+  , numTasks :: Int
   , leftOverPenalty :: Float
   , agentList :: [AP]
   , taskList :: [(Time, [Task])]
