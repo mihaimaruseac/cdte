@@ -74,21 +74,17 @@ agentLoopSendingTasks af@(AF { taskList = (t, _):_ }) t'
   | otherwise = agentLoopNoTasksToSend af t' -- only wait
 
 agentLoopNoTasksToSend :: AF -> Time -> IO ()
-agentLoopNoTasksToSend af t = do
+agentLoopNoTasksToSend af@(AF { agentList=ag }) t = do
+  readyDistributeTasks [] ag
   -- TODO: wait for negotiations
   agentLoopPhase2 af t
 
 doSendTasks :: AF -> Time -> IO ()
 doSendTasks af@(AF { agentList=ag, taskList=(_, ts):tss }) t = do
   let otd = computeOptimumTaskDistribution af ts
-  distributeTasks $ fillIn otd ag
+  readyDistributeTasks otd ag
   let af' = af { taskList = tss }
   agentLoopNoTasksToSend af' t
-  where
-    fillIn l [] = l
-    fillIn l (x:xs)
-      | x `elem` map fst l = fillIn l xs
-      | otherwise = (x, []) : fillIn l xs
 
 receiveTasksDone :: AF -> IO [(AP, [Task], [Task])]
 receiveTasksDone a@(AF {numAgents=n, incoming=c}) = doRTD n c []
@@ -105,6 +101,14 @@ receiveTasksDone a@(AF {numAgents=n, incoming=c}) = doRTD n c []
 
 computeOptimumTaskDistribution :: AF -> [Task] -> [(AP, [Task])]
 computeOptimumTaskDistribution af t = [(head $ agentList af, t)]
+
+readyDistributeTasks :: [(AP, [Task])] -> [AP] -> IO ()
+readyDistributeTasks otd ag = distributeTasks $ fillIn otd ag
+  where
+    fillIn l [] = l
+    fillIn l (x:xs)
+      | x `elem` map fst l = fillIn l xs
+      | otherwise = (x, []) : fillIn l xs
 
 distributeTasks :: [(AP, [Task])] -> IO ()
 distributeTasks = mapM_ distributeTasksToOneAgent
