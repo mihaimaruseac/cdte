@@ -61,3 +61,6 @@ pprintAP a = "AP" ++ id ++ ": budget: " ++ bdg ++ " caps: " ++ capss
 
 instance Show AP where
   show = pprintAP
+
+instance Eq AP where
+  AP {idAP=id1} == AP {idAP=id2} = id1 == id2

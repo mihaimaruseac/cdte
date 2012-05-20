@@ -74,10 +74,17 @@ agentLoopNoTasksToSend af t = do
   agentLoopPhase2 af t
 
 doSendTasks :: AF -> Time -> IO ()
-doSendTasks af@(AF { taskList = (_, ts):tss }) t = do
-  distributeTasks $ computeOptimumTaskDistribution af ts
+doSendTasks af@(AF { agentList=ag, taskList=(_, ts):tss }) t = do
+  let otd = computeOptimumTaskDistribution af ts
+  distributeTasks $ fillIn otd ag
   let af' = af { taskList = tss }
   agentLoopNoTasksToSend af' t
+  where
+    fillIn l [] = l
+    fillIn l (x:xs)
+      | x `elem` map fst l = fillIn l xs
+      | otherwise = (x, []) : fillIn l xs
+
 receiveTasksDone :: AF -> IO ()
 receiveTasksDone a@(AF {numAgents=n, incoming=c}) = doRTD n c
   where
@@ -94,7 +101,7 @@ distributeTasks = mapM_ distributeTasksToOneAgent
 
 distributeTasksToOneAgent :: (AP, [Task]) -> IO ()
 distributeTasksToOneAgent (a@AP { idAP = aid, incomingAP = c }, t) = do
-  putStrLn $ "AF -> AP" ++ show aid ++ ": " ++ pprintTasks t
+  when (t /= []) $ putStrLn $ "AF -> AP" ++ show aid ++ ": " ++ pprintTasks t
   writeChan c $ Tasks t
 
 launchSystem :: AF -> IO ()
