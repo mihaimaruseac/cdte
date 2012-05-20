@@ -12,7 +12,7 @@ data AP = AP
   { idAP :: ID
   , budget :: Cost
   , caps :: [Cap]
-  } deriving (Show)
+  }
 
 pprintAP :: AP -> String
 pprintAP a = "AP" ++ id ++ ": budget: " ++ bdg ++ " caps: " ++ capss
@@ -21,3 +21,5 @@ pprintAP a = "AP" ++ id ++ ": budget: " ++ bdg ++ " caps: " ++ capss
     bdg = show $ budget a
     capss = pprintCaps $ caps a
 
+instance Show AP where
+  show = pprintAP
