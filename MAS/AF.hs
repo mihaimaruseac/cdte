@@ -22,7 +22,7 @@ import Debug.Trace
 data AF = AF
   { numAgents :: Int
   , numTasks :: Int
-  , leftOverPenalty :: Float
+  , leftOverPenalty :: Cost
   , agentList :: [AP]
   , taskList :: [(Time, [Task])]
   , incoming :: Chan Message
