@@ -10,6 +10,7 @@ constructed by giving the entire argument lists to the constructor.
 import Control.Concurrent.Chan
 import Control.Concurrent.MVar
 import Control.Monad (when, replicateM, forM_, unless)
+import Data.List (sortBy, (\\))
 
 import MAS.GenericTypes
 import MAS.Messages
@@ -37,21 +38,44 @@ receiveTasks a@(AP { incomingAP=inc }) ms = do
 
 planifyTasks :: AP -> [Task] -> [Task] -> IO ([Task], [Task])
 planifyTasks a@(AP {budget=b, caps=c, leftOvers=lo, afap=afap,
-  incomingAP=inc, idAP=aid}) t r = do
+  incomingAP=inc, idAP=aid, lop=lop}) t r = do
     let all_tasks = lo ++ t ++ r
     -- get info about tasks
     taskInfo <- askAboutOthers afap a all_tasks
     writeChan afap $ DoneAsking aid
+    -- find tasks only I can do
+    let myTasks = sortBy (capacity c) $ map fst $ filter (\(_,l) -> l == []) taskInfo
     -- send proposals
-    let myTasks = map fst $ filter (\(_,l) -> l == []) taskInfo
     let toProposeTasks = filter (\(_, l) -> l /= []) taskInfo
     forM_ toProposeTasks (proposeTasksToAgents a)
     writeChan afap $ DoneCfp aid
     proposedTaskList <- waitForAllCfpDone a
-    print proposedTaskList
+    let helpingTasks = filter (\(_,m,_) -> m == Nothing) proposedTaskList
+    let maybeTasks = proposedTaskList \\ helpingTasks
+    -- try to do as many of my tasks as possible
+    let (newBudget, todoTasks, toLeaveTasks) = planMine myTasks b c
+    print ("MM-mine", newBudget, todoTasks, toLeaveTasks, aid)
+    -- TODO: discard wrong tasks
     -- try to solve some tasks
     -- TODO distribute tasks to other agents
     return ([], all_tasks)
+
+capacity :: [Cap] -> Task -> Task -> Ordering
+capacity cap (_, c1) (_, c2) =
+  case lookup c1 cap of
+    Nothing -> error "Invalid task list (no one can do task)"
+    Just co1 -> case lookup c2 cap of
+      Nothing -> error "Invalid task list (no one can do task)"
+      Just co2 -> co1 `compare` co2
+
+planMine :: [Task] -> Cost -> [Cap] -> (Cost, [Task], [Task])
+planMine ts b c = doPlan ts b c [] []
+  where
+    doPlan [] b _ todo toleave = (b, todo, toleave)
+    doPlan all@(t@(tid, cid):ts) b c todo toleave = case lookup cid c of
+      Nothing -> error "This should not have happened"
+      Just cost -> if cost <= b then doPlan ts (b - cost) c (t:todo) toleave
+        else doPlan [] b c todo all
 
 waitForAllCfpDone :: AP -> IO [(Task, Maybe Cost, AP)]
 waitForAllCfpDone a@(AP {incomingAP=c}) = recvAllCfpDone [] []
